@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script>
+  // Applied before the stylesheet paints so light-mode users don't see a flash of dark first.
+  try{
+    var t = localStorage.getItem('nms-buddy-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+</script>
+<title>NMS.Buddy — Voyage Log</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&family=Atkinson+Hyperlegible+Mono:wght@400..800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0C0C11;
+    --bg-2:#15151b;
+    --panel:#16161d;
+    --panel-2:#1a1a22;
+    --panel-3:#202029;
+    --border:#2a2a35;
+    --border-soft:#1e1e26;
+    --text:#ffffff;
+    --text-dim:#a8adb8;
+    --text-faint:#6b7280;
+    --cyan:#79bbe8;
+    --cyan-dim:#28343f;
+    --orange:#d9a33c;
+    --violet:#b185df;
+    --green:#8fbf7a;
+    --red:#e2748c;
+    --chip:#c2c7ce;
+    /* fixed roles: planets are always blue, moons are always grey */
+    --planet-c:#79bbe8;
+    --moon-c:#9298a6;
+    /* single accent used for all "meta" info: kind/type labels + resource chips */
+    --meta-c:#d9a33c;
+    /* theme-aware extras: glow/hover tints so light mode doesn't inherit dark-only colors */
+    --glow-gold: rgba(217,163,60,.6);
+    --hover-bg-red:#2a1620;
+    --hover-bg-green:#1c2a18;
+    --hover-bg-grey:#20222a;
+    --tint-violet: rgba(177,133,223,0.10);
+    --tint-cyan: rgba(121,187,232,0.08);
+    --galaxy-tint: rgba(155,140,255,0.18);
+    --overlay-bg: rgba(6,7,10,.72);
+  }
+
+  /* ---------- Light theme ----------
+     Same structure, every token re-mapped for a white/light background.
+     Gold (--orange/--meta-c) is deepened so it stays readable on white —
+     the dark-mode gold is too pale for light backgrounds. */
+  :root[data-theme="light"]{
+    --bg:#f6f7fa;
+    --bg-2:#ffffff;
+    --panel:#ffffff;
+    --panel-2:#f2f3f6;
+    --panel-3:#e9ebf0;
+    --border:#d8dae1;
+    --border-soft:#e4e6eb;
+    --text:#000000;
+    --text-dim:#000000;
+    --text-faint:#33353b;
+    --cyan:#1f6fb2;
+    --cyan-dim:#dceaf6;
+    --orange:#92660d;
+    --violet:#7c4fb0;
+    --green:#3f7a34;
+    --red:#c23b57;
+    --chip:#4b4f59;
+    --planet-c:#1f6fb2;
+    --moon-c:#5b6270;
+    --meta-c:#92660d;
+    --glow-gold: rgba(146,102,13,.30);
+    --hover-bg-red:#fbe6ea;
+    --hover-bg-green:#e7f2e3;
+    --hover-bg-grey:#eceef2;
+    --tint-violet: rgba(124,79,176,0.06);
+    --tint-cyan: rgba(31,111,178,0.05);
+    --galaxy-tint: rgba(124,79,176,0.08);
+    --overlay-bg: rgba(20,21,26,.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, var(--tint-violet), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 0%, var(--tint-cyan), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding:28px 20px 80px;
+    transition:background-color .2s;
+    zoom:1.3;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+  .main-layout{display:flex;gap:20px;align-items:flex-start;}
+  .fav-col{width:240px;flex-shrink:0;position:sticky;top:20px;}
+  .content-col{flex:1;min-width:0;}
+  @media (max-width:820px){
+    .main-layout{flex-direction:column;}
+    .fav-col{width:100%;position:static;}
+  }
+
+  /* ---------- Top nav ---------- */
+  .topnav{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding-bottom:16px;margin-bottom:16px;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .brand{
+    font-family:'Inter',sans-serif;font-weight:800;font-size:19px;letter-spacing:.01em;
+    color:var(--text);cursor:pointer;user-select:none;white-space:nowrap;
+    background:none;border:none;padding:0;display:flex;align-items:center;
+  }
+  .brand span{color:var(--cyan);}
+  .brand:hover span{text-shadow:0 0 14px color-mix(in srgb, var(--cyan) 60%, transparent);}
+  .search-wrap{flex:1;min-width:200px;position:relative;}
+  .search-wrap.search-wrap input{
+    padding:8px 34px 8px 100px;background:var(--bg-2);
+  }
+  .search-wrap input::placeholder{font-style:italic;color:var(--text-faint);}
+  .search-icon{
+    position:absolute;left:11px;top:50%;transform:translateY(-50%);
+    width:15px;height:15px;color:var(--text);pointer-events:none;display:flex;
+  }
+  .search-icon svg{width:100%;height:100%;display:block;}
+  .search-label{
+    position:absolute;left:33px;top:50%;transform:translateY(-50%);
+    font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.08em;
+    color:var(--text-faint);text-transform:uppercase;pointer-events:none;white-space:nowrap;
+  }
+  .search-clear{
+    position:absolute;right:6px;top:50%;transform:translateY(-50%);
+    background:none;border:none;color:var(--text-faint);font-size:15px;padding:4px 6px;line-height:1;
+  }
+  .search-clear:hover{color:var(--text);}
+  .nav-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .btn-donate{border-color:color-mix(in srgb, var(--red) 40%, transparent);color:var(--red);}
+  .btn-donate:hover{border-color:var(--red);background:var(--hover-bg-red);}
+
+  /* ---------- Header (save / export row) ---------- */
+  .hdr{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+    flex-wrap:wrap;
+    margin-bottom:22px;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .hdr-title{display:flex;flex-direction:column;gap:4px;}
+  .eyebrow{
+    font-family:'Inter',sans-serif;font-size:11px;letter-spacing:.18em;
+    color:var(--cyan);text-transform:uppercase;
+  }
+  h1{
+    font-family:'Inter',sans-serif;font-weight:800;font-size:26px;letter-spacing:.03em;
+    margin:0;color:var(--text);
+    text-shadow:0 0 24px color-mix(in srgb, var(--cyan) 25%, transparent);
+  }
+  .hdr-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;background:var(--overlay-bg);backdrop-filter:blur(2px);
+    display:flex;align-items:center;justify-content:center;padding:20px;z-index:100;
+  }
+  .modal-box{
+    background:var(--panel-2);border:1px solid var(--border);border-radius:12px;
+    max-width:520px;width:100%;padding:26px 26px 22px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .modal-title{font-weight:800;font-size:20px;margin:0 0 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .modal-close{background:none;border:none;color:var(--text-faint);font-size:20px;padding:2px 6px;}
+  .modal-close:hover{color:var(--text);}
+  .modal-body{font-size:17px;color:var(--text-dim);line-height:1.8;}
+  .modal-body ul{margin:12px 0;padding-left:24px;}
+  .modal-body li{margin-bottom:12px;}
+  .modal-body strong{color:var(--text);}
+  .modal-credit{
+    margin-top:18px;padding-top:16px;border-top:1px solid var(--border-soft);
+    font-size:14px;color:var(--text-faint);
+  }
+  .modal-credit a{color:var(--cyan);text-decoration:none;}
+  .modal-credit a:hover{text-decoration:underline;}
+  .modal-heart{color:var(--red);}
+  .btn-youtube{
+    display:flex;align-items:center;justify-content:center;gap:9px;width:100%;box-sizing:border-box;
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:11px 16px;border-radius:7px;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;
+    text-decoration:none;transition:border-color .15s, background .15s, transform .1s;
+  }
+  .btn-youtube:hover{border-color:#ff0000;background:color-mix(in srgb, #ff0000 14%, var(--panel-2));}
+  .btn-youtube:active{transform:scale(.98);}
+  .btn-youtube svg{width:20px;height:20px;flex-shrink:0;}
+
+  /* ---------- Buttons ----------
+     Every button — nav, header, save bar, galaxy/system/planet/moon rows — is the
+     same physical size as the search input, and every button of a given *kind*
+     (default / primary / rename / delete / planet / moon) hovers the same way
+     everywhere it appears. */
+  button{font-family:'Inter',sans-serif;cursor:pointer;}
+  .btn{
+    font-weight:600;font-size:13px;letter-spacing:.03em;
+    padding:8px 14px;border-radius:6px;border:1px solid var(--border);
+    background:var(--panel-2);color:var(--text);
+    display:inline-flex;align-items:center;gap:6px;
+    transition:border-color .15s, background .15s, color .15s, transform .1s;
+  }
+  .btn:hover{border-color:var(--cyan);background:var(--panel-3);}
+  .btn:active{transform:scale(.97);}
+
+  /* Primary / constructive action (Add Galaxy, Add System, confirm Save, etc.) */
+  .btn-primary{background:linear-gradient(135deg,#1c3550,#142839);border-color:var(--cyan);color:var(--cyan);}
+  .btn-primary:hover{background:linear-gradient(135deg,#25415e,#1a3247);border-color:var(--cyan);}
+
+  /* Rename — same blue hover everywhere it appears (save/galaxy/system/planet/moon) */
+  .btn-rename{background:transparent;border-color:var(--border);color:var(--text-dim);}
+  .btn-rename:hover{border-color:var(--cyan);background:var(--cyan-dim);color:var(--cyan);}
+
+  /* Delete — same red hover everywhere it appears */
+  .btn-delete{background:transparent;border-color:var(--border);color:var(--text-dim);}
+  .btn-delete:hover{border-color:var(--red);background:var(--hover-bg-red);color:var(--red);}
+  .btn-danger{border-color:color-mix(in srgb, var(--red) 45%, transparent);color:var(--red);}
+  .btn-danger:hover{border-color:var(--red);background:var(--hover-bg-red);}
+
+  /* Add Planet — green */
+  .btn-planet{background:transparent;border-color:color-mix(in srgb, var(--green) 40%, transparent);color:var(--green);}
+  .btn-planet:hover{border-color:var(--green);background:var(--hover-bg-green);}
+
+  /* Add Moon — grey */
+  .btn-moon{background:transparent;border-color:color-mix(in srgb, var(--moon-c) 45%, transparent);color:var(--moon-c);}
+  .btn-moon:hover{border-color:var(--moon-c);background:var(--hover-bg-grey);}
+
+  .btn-ghost{background:transparent;border-color:transparent;color:var(--text-dim);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--border);background:var(--panel-3);}
+  .btn-sm{padding:8px 14px;font-size:13px;}
+  .btn[disabled]{opacity:.4;cursor:not-allowed;}
+
+  input[type=text],textarea,select{
+    font-family:'Inter',sans-serif;font-size:13px;
+    background:var(--bg-2);border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:8px 10px;width:100%;outline:none;
+  }
+  input[type=text]:focus,textarea:focus,select:focus{border-color:var(--cyan);}
+  textarea{resize:vertical;min-height:56px;font-family:'Inter',sans-serif;font-size:12.5px;line-height:1.5;}
+  label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;font-family:'Inter',sans-serif;font-weight:600;display:block;margin-bottom:4px;}
+  .field{margin-bottom:10px;}
+  .field-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .field-row>.field{flex:1;min-width:140px;}
+
+  /* ---------- Save selector bar ---------- */
+  .save-bar{
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+    background:var(--panel);border:1px solid var(--border-soft);
+    border-radius:10px;padding:12px 14px;margin-bottom:24px;
+  }
+  .save-bar label{margin:0;}
+  .save-bar select{width:auto;min-width:180px;}
+  .save-bar .grow{flex:1;min-width:180px;}
+  .save-edit-box{
+    display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+    background:var(--panel-2);border:1px solid var(--border);
+    padding:10px;border-radius:8px;margin-top:10px;width:100%;
+  }
+  .status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);flex-shrink:0;}
+  .autosave-note{font-size:11px;color:var(--text-faint);font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px;}
+
+  /* ---------- Shared Portal Codes (community-shared addresses, per save) ---------- */
+  .shared-portals-title{
+    font-family:'Inter',sans-serif;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--text-faint);margin-bottom:14px;display:flex;align-items:center;gap:6px;
+  }
+  .shared-portals-title .diamond{color:var(--violet);}
+
+  /* ---------- Empty state ---------- */
+  .empty{
+    text-align:center;padding:50px 20px;color:var(--text-faint);
+    border:1px dashed var(--border);border-radius:12px;font-family:'Inter',sans-serif;font-size:15px;
+  }
+
+  /* ---------- Pinned systems sidebar ---------- */
+  .fav-panel{
+    background:var(--panel);border:1px solid var(--border-soft);border-radius:10px;
+    padding:14px;
+  }
+  .fav-title{
+    font-family:'Inter',sans-serif;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--text-faint);margin-bottom:10px;display:flex;align-items:center;gap:6px;
+  }
+  .fav-title .star{color:var(--orange);}
+  .fav-list{display:flex;flex-direction:column;gap:8px;}
+  .fav-item{
+    display:block;width:100%;text-align:left;background:var(--panel-2);
+    border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:8px;
+    padding:8px 10px;cursor:pointer;font-family:'Inter',sans-serif;
+    transition:border-color .15s, background .15s;
+  }
+  .fav-item:hover{border-color:var(--orange);background:var(--panel-3);}
+  .fav-item-name{font-weight:700;font-size:13px;color:var(--text);}
+  .fav-item-galaxy{font-size:11px;color:var(--text-faint);margin-top:2px;}
+  .fav-empty{font-size:12px;color:var(--text-faint);font-style:italic;line-height:1.5;}
+
+  /* ---------- Galaxy card ---------- */
+  .galaxy{
+    border:1px solid var(--border);border-radius:14px;margin-bottom:18px;overflow:hidden;
+    background:var(--panel);
+  }
+  .galaxy-head{
+    padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    background:
+      radial-gradient(ellipse 300px 120px at 90% -30%, var(--galaxy-tint), transparent 70%),
+      linear-gradient(135deg, color-mix(in srgb, var(--violet) 6%, var(--panel)), var(--panel));
+    border-bottom:1px solid var(--border-soft);
+    cursor:pointer;
+  }
+  .galaxy-title-block{display:flex;flex-direction:column;gap:3px;}
+  .galaxy-name{
+    font-family:'Inter',sans-serif;font-weight:700;font-size:17px;color:var(--text);
+    letter-spacing:.02em;
+  }
+  .galaxy-meta{font-size:11.5px;color:var(--text-dim);font-family:'Inter',sans-serif;}
+  .galaxy-body{padding:16px 18px;}
+  .chev{transition:transform .15s;color:var(--text-faint);flex-shrink:0;cursor:pointer;padding:2px;}
+  .chev.open{transform:rotate(90deg);}
+  .row-actions{display:flex;gap:6px;align-items:center;flex-shrink:0;}
+
+  /* ---------- System card ---------- */
+  .system{
+    border:1px solid var(--border-soft);border-radius:10px;margin-bottom:12px;overflow:hidden;
+    background:var(--panel-2);
+  }
+  .system.pinned{border-color:color-mix(in srgb, var(--orange) 40%, transparent);}
+  .system-head{
+    padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    cursor:pointer;
+  }
+  .system-title-block{display:flex;align-items:center;gap:9px;min-width:0;}
+  .system-name{font-family:'Inter',sans-serif;font-weight:700;font-size:15.5px;color:var(--text);}
+  .star-btn{background:none;border:none;font-size:16px;line-height:1;color:var(--text-faint);padding:2px;flex-shrink:0;}
+  .star-btn.active{color:var(--orange);text-shadow:0 0 8px var(--glow-gold);}
+  .traveller-btn{
+    background:none;border:none;padding:1px;flex-shrink:0;
+    width:19px;height:19px;display:inline-flex;align-items:center;justify-content:center;
+    color:var(--text);opacity:.85;transition:opacity .15s, color .15s, filter .15s;
+  }
+  .traveller-btn svg{width:100%;height:100%;display:block;}
+  .traveller-btn:hover{opacity:1;}
+  .traveller-btn.active{color:var(--orange);opacity:1;filter:drop-shadow(0 0 5px var(--glow-gold));}
+  .pin-tag{
+    font-size:10px;font-family:'Inter',sans-serif;color:var(--orange);border:1px solid color-mix(in srgb, var(--orange) 40%, transparent);
+    padding:1px 6px;border-radius:10px;letter-spacing:.05em;flex-shrink:0;
+  }
+  .system-body{padding:0 14px 14px;}
+
+  .node-box{
+    background:var(--bg-2);border:1px solid var(--border);border-left:3px solid var(--meta-c);
+    border-radius:8px;padding:12px 14px;margin-bottom:14px;
+  }
+  .node-label{
+    font-family:'Inter',sans-serif;font-size:10.5px;color:var(--meta-c);letter-spacing:.1em;
+    text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .node-text{font-family:'Inter',sans-serif;font-size:12.5px;color:var(--text-dim);white-space:pre-wrap;line-height:1.55;}
+  .node-text:empty::before{content:"No note logged.";color:var(--text-faint);font-style:italic;}
+
+  /* ---------- Portal glyph address ---------- */
+  .portal-box{
+    background:var(--bg-2);border:1px solid var(--border);border-left:3px solid var(--violet);
+    border-radius:8px;padding:12px 14px;margin-bottom:14px;
+  }
+  .glyph-row{display:flex;gap:5px;flex-wrap:wrap;align-items:center;min-height:26px;}
+  .glyph-icon{
+    width:22px;height:22px;flex-shrink:0;object-fit:contain;
+    filter:none;
+  }
+  /* Icons are white-line art on transparent backgrounds — invert to dark strokes in light mode */
+  :root[data-theme="light"] .glyph-icon{ filter:invert(1); }
+  .glyph-slot{
+    width:22px;height:22px;flex-shrink:0;border:1px dashed var(--border);border-radius:4px;
+  }
+  .glyph-empty-note{font-size:12px;color:var(--text-faint);font-style:italic;font-family:'Inter',sans-serif;}
+  .glyph-edit-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
+  .glyph-slot-wrap{position:relative;}
+  .glyph-slot-btn{
+    width:34px;height:34px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;padding:2px;
+    transition:border-color .15s, background .15s;
+  }
+  .glyph-slot-btn:hover{border-color:var(--violet);}
+  .glyph-slot-btn.filled{border-color:color-mix(in srgb, var(--violet) 45%, transparent);}
+  .glyph-slot-btn.active{border-color:var(--violet);background:var(--panel-3);}
+  .glyph-slot-btn .glyph-icon{width:22px;height:22px;}
+  .glyph-slot-num{font-family:'Atkinson Hyperlegible Mono',monospace;font-size:11px;color:var(--text-faint);}
+  .glyph-picker-panel{
+    position:absolute;top:calc(100% + 6px);left:0;z-index:20;
+    background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
+    padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+    display:grid;grid-template-columns:repeat(4, 32px);gap:6px;width:max-content;
+  }
+  .glyph-picker-option{
+    width:32px;height:32px;border-radius:5px;border:1px solid var(--border);background:var(--bg-2);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;padding:2px;
+  }
+  .glyph-picker-option:hover{border-color:var(--violet);background:var(--panel-3);}
+  .glyph-picker-option img{width:20px;height:20px;}
+  .glyph-picker-clear{
+    grid-column:span 4;font-family:'Inter',sans-serif;font-size:11px;color:var(--text-faint);
+    background:none;border:1px dashed var(--border);border-radius:5px;padding:4px;cursor:pointer;
+  }
+  .glyph-picker-clear:hover{color:var(--text);border-color:var(--border);}
+  .entry-card{
+    background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
+    padding:10px 12px;margin-top:10px;
+  }
+  .entry-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+  .entry-card-label{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:var(--text);}
+
+  /* ---------- Planet / moon tiles ----------
+     Planets are always blue, moons are always grey — no per-kind color coding.
+     The "kind" label and resource chips share one muted amber accent so the
+     card isn't fighting itself with lots of different colors. */
+  .tiles{display:flex;flex-direction:column;gap:10px;}
+  .tile{
+    border-radius:9px;border:1px solid var(--border);background:var(--panel-3);
+    padding:11px 13px;position:relative;border-left:3px solid var(--kc,var(--planet-c));
+  }
+  .tile-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .tile-title-block{display:flex;align-items:center;gap:9px;min-width:0;flex-wrap:wrap;}
+  .hex{
+    width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    background:color-mix(in srgb, var(--kc,var(--planet-c)) 18%, transparent);
+    clip-path:polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    font-size:10px;color:var(--kc,var(--planet-c));font-weight:700;
+  }
+  .tile-name{font-family:'Inter',sans-serif;font-weight:700;font-size:14.5px;color:var(--text);}
+  .tile-kind{font-size:12.5px;color:var(--meta-c);font-family:'Atkinson Hyperlegible Mono',monospace;font-weight:600;letter-spacing:.02em;}
+  .tile-flora{font-size:12.5px;color:var(--green);font-family:'Atkinson Hyperlegible Mono',monospace;margin-top:6px;}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center;}
+  .chip-row-label{
+    font-family:'Inter',sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--text-faint);margin-right:2px;
+  }
+  .sentinel-badge{
+    display:inline-flex;align-items:center;gap:4px;font-family:'Atkinson Hyperlegible Mono',monospace;
+    font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:10px;margin-top:8px;
+    border:1px solid var(--border);color:var(--text-dim);
+  }
+  .sentinel-badge.sentinel-low{color:var(--moon-c);border-color:color-mix(in srgb, var(--moon-c) 45%, transparent);}
+  .sentinel-badge.sentinel-high{color:var(--orange);border-color:color-mix(in srgb, var(--orange) 45%, transparent);}
+  .sentinel-badge.sentinel-aggressive{color:var(--red);border-color:color-mix(in srgb, var(--red) 45%, transparent);}
+  .sentinel-badge.sentinel-dissonance{color:var(--violet);border-color:color-mix(in srgb, var(--violet) 45%, transparent);}
+  .chip{
+    font-family:'Atkinson Hyperlegible Mono',monospace;font-size:12.5px;color:var(--text);
+    background:var(--bg-2);border:1px solid var(--border);
+    border-radius:5px;padding:2px 8px;
+  }
+  .moons{margin-top:10px;padding-left:16px;border-left:2px dotted var(--border);display:flex;flex-direction:column;gap:8px;}
+  .moon-tile{border-left-width:3px;background:var(--panel-2);}
+
+  .add-row{margin-top:10px;}
+  .add-inline{
+    border:1px dashed var(--border);border-radius:9px;padding:12px;background:var(--bg-2);
+  }
+
+  .section-label{
+    font-family:'Inter',sans-serif;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--text-faint);margin:14px 0 8px;
+  }
+
+  mark.search-hit{
+    background:color-mix(in srgb, var(--orange) 55%, transparent);
+    color:var(--text);border-radius:3px;padding:0 2px;font-weight:700;
+  }
+
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--panel-3);border:1px solid var(--cyan);color:var(--cyan);
+    font-family:'Inter',sans-serif;font-size:12px;padding:9px 16px;border-radius:8px;
+    opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;z-index:50;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .kind-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+  .kind-pick{
+    font-size:10.5px;font-family:'Inter',sans-serif;color:var(--text-faint);
+    border:1px solid var(--border);padding:2px 7px;border-radius:5px;background:var(--bg-2);
+  }
+  .kind-pick:hover{border-color:var(--cyan);color:var(--cyan);}
+
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-track{background:var(--bg-2);}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px;}
+
+  @media (max-width:520px){
+    h1{font-size:20px;}
+    .save-bar select{min-width:0;width:100%;}
+  }
+
+  /* ---------- Footer ---------- */
+  .site-footer{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    margin-top:32px;padding-top:18px;border-top:1px solid var(--border-soft);
+  }
+  .site-footer-brand{
+    font-family:'Inter',sans-serif;font-weight:800;font-size:15px;color:var(--text);
+  }
+  .site-footer-brand span{color:var(--cyan);}
+  .site-footer-credit{font-family:'Inter',sans-serif;font-size:13px;color:var(--text-faint);}
+  .site-footer-credit a{color:var(--cyan);text-decoration:none;}
+  .site-footer-credit a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topnav">
+    <button class="brand" id="btnHome" title="Back to main page">NMS<span>.Buddy</span></button>
+    <div class="search-wrap">
+      <span class="search-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+      <span class="search-label">Search</span>
+      <input type="text" id="searchInput" placeholder="galaxies, systems, planets, moons, resources...">
+      <button class="search-clear" id="searchClear" style="display:none;" title="Clear search">✕</button>
+    </div>
+    <div class="nav-actions">
+      <button class="btn btn-sm" id="btnGuide">Guide</button>
+      <button class="btn btn-sm" id="btnAbout">About</button>
+      <a class="btn btn-sm" href="https://docs.google.com/forms/d/e/1FAIpQLSckMvw7XOUP_OEAmR5V8knscbPHQ14AlS8uzGNzUDVVjiChXA/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" title="Report a bug or send feedback">Feedback</a>
+      <button class="btn btn-sm" id="btnThemeToggle" title="Switch between light and dark mode">🌙 Dark</button>
+      <a class="btn btn-sm btn-donate" id="btnDonate" href="https://ko-fi.com/sirbeetwix" target="_blank" rel="noopener noreferrer">Donate ♥</a>
+    </div>
+  </div>
+
+  <div class="hdr">
+    <div class="hdr-title">
+      <div class="eyebrow">Voyage Log // Interstellar Archive</div>
+      <h1>No Man's Sky — Save Tracker</h1>
+    </div>
+    <div class="hdr-actions">
+      <button class="btn btn-sm btn-primary" id="btnSharedPortals">◈ Shared Codes</button>
+      <button class="btn btn-sm" id="btnExport">⤓ Export JSON</button>
+      <button class="btn btn-sm" id="btnImportTrigger">⤒ Import JSON</button>
+      <input type="file" id="fileImport" accept="application/json" style="display:none;">
+    </div>
+  </div>
+
+  <div class="save-bar" id="saveBar"></div>
+
+  <div class="main-layout">
+    <div class="fav-col">
+      <div class="fav-panel" id="favPanel"></div>
+    </div>
+    <div class="content-col">
+      <div id="content"></div>
+    </div>
+  </div>
+
+  <div class="site-footer">
+    <div class="site-footer-brand">NMS<span>.Buddy</span></div>
+    <div class="site-footer-credit"><a href="https://www.youtube.com/@SirBeetWix" target="_blank" rel="noopener noreferrer">©SirBeetWix</a></div>
+    <button class="btn btn-sm" id="btnBackToTop">Back to top ↑</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="modalRoot"></div>
+
+<script>
+/* =========================================================================
+   DATA MODEL
+   state = {
+     activeSaveId,
+     saves: [{ id, name,
+       galaxies: [{ id, name,
+         systems: [{ id, name, favorite, node:{notes}, planets:[
+           { id, name, kind, flora, resources:[...], moons:[
+             { id, name, kind, flora, resources:[...] }
+           ]}
+         ]}]
+       }]
+     }]
+   }
+   ========================================================================= */
+
+const STORAGE_KEY = 'nms-voyage-log-data';
+let state = null;
+let viewMode = 'log'; // 'log' | 'shared-portals'
+// In-progress glyph code edits (keyed by a unique id-prefix per form), and which
+// glyph picker panel (if any) is currently open. Kept outside the saved data
+// model until the form is actually saved.
+let glyphDrafts = {};
+let openGlyphPicker = null;
+
+// transient UI state (not persisted)
+const openGalaxies = new Set();
+const openSystems = new Set();
+const editing = new Set();      // ids currently in edit mode
+const addingChild = new Set();  // ids of parents currently showing an "add child" inline form
+let searchQuery = '';
+
+// Planets are always blue, moons are always grey — kept as functions so the
+// tile renderers below don't need to know which literal color to reach for.
+function planetColor(){ return '#79bbe8'; }
+function moonColor(){ return '#9298a6'; }
+
+function renderChips(list){
+  if(!list.length) return '';
+  return `<div class="chips">${list.map(r=>`<span class="chip">${highlight(r)}</span>`).join('')}</div>`;
+}
+function renderLabeledChips(label, list){
+  if(!list || !list.length) return '';
+  return `<div class="chip-row"><span class="chip-row-label">${esc(label)}</span>${list.map(r=>`<span class="chip">${highlight(r)}</span>`).join('')}</div>`;
+}
+
+const PLANET_KINDS = ['Lush','Ocean','Toxic','Radioactive','Scorched','Frozen','Barren','Dead','Exotic','Supercritical','Mechanical','Infested','Paradise','Weird','Glitched'];
+const MOON_KINDS = ['Barren','Abandoned','Columned','Frozen','Toxic','Radioactive','Dead','Mechanical','Cratered'];
+// Sentinel activity: fixed set, each with its own designated color (not the general meta-gold).
+// Colors are CSS classes (not hex) so they adapt correctly between light and dark mode.
+const SENTINEL_LEVELS = [
+  { label:'Low Activity', cls:'sentinel-low' },
+  { label:'High Activity', cls:'sentinel-high' },
+  { label:'Aggressive Sentinels', cls:'sentinel-aggressive' },
+  { label:'Dissonance Sentinels', cls:'sentinel-dissonance' },
+];
+function sentinelClass(label){
+  const found = SENTINEL_LEVELS.find(s=>s.label===label);
+  return found ? found.cls : '';
+}
+function sentinelOptions(selected){
+  return `<option value=""${!selected?' selected':''}>—</option>` +
+    SENTINEL_LEVELS.map(s=>`<option value="${esc(s.label)}"${selected===s.label?' selected':''}>${esc(s.label)}</option>`).join('');
+}
+function renderSentinelBadge(label){
+  if(!label) return '';
+  return `<span class="sentinel-badge ${sentinelClass(label)}">☉ ${esc(label)}</span>`;
+}
+
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+// Portal glyph icons (base64-embedded so the file stays fully self-contained/offline).
+const GLYPH_ICONS = {
+  "0": "data:image/webp;base64,UklGRmgEAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSDUDAAABD8egbSRH7+zzJ90bgIjIxS8nQbaMi5UkjF0riSon5bXxIKGobSNp8tor4Q94SUT0P0ZLXbmg+kCgo22TIsn5IzKruqZhcJmZmZmZee8gS7ZsXYGlA0gWk8e0zMzDPM1QVRkhHLDWjYgJwGsrgQDoGBExMxMpRADS0SJmY/4FKIRIoaPDzMYYA3EgGPKsIYKOjIiNtUYjTaUYcS5MBJZJAR0BkTHGcphcMHtqKOq7diobD1CojsAY6yFeszX75bevSlS/+ujRaUNFD6oCHQ4Ztlb94/zOV6nJkwPKt/U+n3+62mlUnAzLsLWaPPPLm+NXTTExlG2p93bhIp5a55zqv4hAzNYise+Ht/csCCP8W40xbR3ntdWoOAITWbLExrBb0/nWyUwZDFIAarz04ND5jrwHKBtSz1rDbNzcs993UxRT5GIHtl4imU7iyJQPLBMzQzyqppJGivvkcoLIWDgiQNj6yZTXcPb7jsBnVCKfx5+5dpf9ZTvAEQWztjcWn3a65JzppqPD2aY9QTLX54L9k380dv7R5y9XPXjlliyIl+1rLCWbHrWvzgygObzRvGRgYOF2WzreeL0VA+83v7f4w7utgy+DjZnrT4HMypbHT2Lw/PnlS/3ZB91HT3zyYXF6JHr5V7duddPFqV2t/VNXJaK+Dg1m1FO+tVCbOPe7F12XbvePT4eRi/zu7AxPurw1DTOD1mJySqqS6u7VCZPydYVL9xPlgc56qUnk4hiIiSbU2idkX/n15WxTU5s206Cb3n+v/DhfrrkwEo0ljiKnjCWHhy41rbI1n9uzU1uqWpd7LCvaP85WqmEsUFVRp6C6V8/3rg9vPBGeuCDofVRGsGBC9Ocfz6JKJAIQ/pNYJ037uTKYWeu7Z9X6gZnNlH1S31/r/d3FTjFMJsNbN/2ycM7trvHzBl+uyT+TOc2/TZz30XfiBMMkgIuX7BuPP+1zpnn7wu8fVpGYd7j7s1u9VdXhgERc8eH1bJ2vJJlUvyiAlnx3Oa9Cw1NxTrodl5UMCTshMrGG5YpAh6VAHIUurEVKZEhEQcQSRxFhhErMTBAFiEhVASaICEaTAAUAAhQAAYrXeABWUDggDAEAABAHAJ0BKigAKAA+MRSIQqIhIRcd/ZggAwS0gAWAFgCGd+Lkq8f8t4wEZtqS+eP8YXPC8wo62Unj8GJjImuwT0vgAP7/2Lr//6gyN/9VWYl4ufO7rtanYPPCcKOZj0il9l4ayopX2lz66N0KV7rw4eNP//+1PBVY+XGPzF5s21w/bpyv8E9J2fVM5Qs/4RO1C4A2+1K+P4hci7XoJuEsGva5kGMlwqHqGmpF7ipmC/sI8ab7qVjb9fC+GMoZFbd7oF8up2PQv65idrWpiMkzio2/tBOy4Y4nGLZZanVAGSNkO3Mse8DMVDibp6KYRfVWUPDlYGmuHIqesjF7UqkarzCTU7boF//+1OIAAAA=",
+  "1": "data:image/webp;base64,UklGRvQDAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSOwCAAANCQJJG2T9U593iOh/oCDNYQgEkvMXHyEispCjpm0DpvyR794REzABlG3bNq09c659Lj/bZmzbZjUPkPY/Qmy8gIspqWTbtv3Z33c/XZ2z94ydlCNiAhC+JwlAgiQESSMkLwhJIwGBCRgCiyQBgAxxUp8k+HMIggBEJWqYPOWrB6IAIkFSYLAEmabW6EHf0Mc/w0BQFhSsuTb13fKLnxzaPp7wD5EwAohZ11A7uzz79RHX3vTu3Rn9IcKRYNW665dnCt+NHja69cAiWgL+kBkcAjqbP9icyx+wb2F28dsPRg7Yzzv7A4YIzucmP1j4fv+DuDC3ujCw/56Hn88A/H00o4ubBt+eGjpsZnpjdmh4JDW/+FFaMPw2AUoILhr+uLj/0g8rPZ1jYf67L2fHJnplv0aQwSh4aXf8q4CFzERHeWP6m/XRseFk24H4pYEAQUFBO9Px2uCgFlZ/qLQO9vi4UCBovzDCoBCCYCzXVIrjlelCoeOg7OMTQUoRECHQ4KBYaYsTJkTIra71t/Tg23uP7kmMEARBIiKQoynj7vr3m7BV7p8vrPwwt3Np20feKbBqQZKXA2pOfGzl+6RvJAe01LV+XZjL9Xf2by3IeYXKqV9/HQUItOrpz3xVbiovo2egtZj9JhnIZ1gsI6JXXA7HvmKCBPh8x9RIzb02XC3WNtVXG9aXaWlHSgH5w5KpkaEqKXlWsLp2WdeNU4c4n7hUY5ffXtoNeWdoqE1/e8yn9SCAAM97LjnxtnOuuvUTFV0usxM3Djdia6fsvUflbV9XCxqMXthpyFZfHt7zzXIcbRZTFpcR1ca73C6m/SEYzZoRFIIoRnwjP9CcVebAqU/W62NXzNcp1xDyyTclwgCjhECTpX1R0fbhmesPmwiuUpsomK9KEQECpCAIhOjgrfD2BYNzxcQlBALNJAi/LUgiJYs+z138asoJBGUA4PV7AEGiIEYq5xEiD4qC8KcKgkRHUMJfKwg0CH+9iP/vVlA4IOIAAABwBgCdASooACgAPjEUh0KiIQx1moAQAYJaQAVIAYvhZESYt8Hdx60ckWIeBkykf6fkxN97w6bGR54Q5QAA/v/hhYv/+oZuf/uaWHrvJ9jYgPJ3UOnOEQp1hquCkeTB1nWWQwDdj05NM4l+A8RCzVDY844H7HnFOO4f1EEwS2c/hUhv79gzPSwq/5MNuVzvyn77Jah1+CABgpINDPyBdE457iAO2D0WdDdvzW2PxAY3vy0Q3Ho7D+jPhZhvVhx4pjwcvi4vkTOIZuAUwfeGgnUTLjCtd7VlUOR46yoI5MqkAAAA",
+  "2": "data:image/webp;base64,UklGRooDAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSLICAAANoKNtkyLJ+SMiq3qZmZmZmdndG+gMOoROgJ5sNFkymZmZaXi2u6oy4hdV7YrdiJgA/G+XLgSkCzupmKiKgIwIQkRVBWT8HmxRmCVThSDCnRRLKgAivImINphaUhOFAMyEmAjAYLjncPyxQEwxRVRMVF1DEIlBj4gKzCD/AGKx8vZikMMh9vPDfc1n99SgJZuCOz5XRzul+hyFqposOvndQGP18GsI92hizVSilQj56X6f1tOiTCt3bpxJ//qdt6q69qbPtfNDW8AgpghrTVJAL07zhO+m1c6mFOlTutBB9g6OvyEoqrfFBhsXVOTi3a/8aIBKh2BIdeZCPPB6D+UUAE2dWdw2s763Vgg6knQWanUtOm2FRoGfnTIVxSRU0Znh6cnnq2v7BqU/3U/10ZUTqX+fx6ZpcnN5/JH5x0qm9GMNWVhU1PeeXbdSknWDu3uPrkkkAjCJyJKasKTdSA+GFYXSlVCXFLnJNDHpJgBEzVTywBAWOoV0Z4DsJGpWJFN69OvZpTYjnJ6SMuecw6NN1FKvV4r05sz9KZ+dG+yng6NDEy65qmqPaJNUlJZWblrY1P36p+997tI5GzcsiU8+HGPdZGcLTAtsPDFl5L23x5ZtfavWZnv1qq49cWXxW89U0ZD8I1GV6zvw+ejCVbMHEzkoNm9R/7uv6wPXF937gzjRTl349dCmpb2ag7GJAKbOmqHGoU/G96YxQ0eP6t7Pl5mVJdaeHQ71eV89Jc3AOTm0bRlNWhieB6NNE2IyZ/64iM9ovneHaDl9akqKNuZc5yYCIrNmjULyLP7oBMyKorQuEblpnAzoZDN7KmPIekYRMSuSoiMjwhmMnF5/aOPsPO3OeuUgqYqK4CYJEOER/RszjZjALFMFiFsc7hCnQARqgltOMoKC36sI/kQSJAAQ//xWUDggsgAAALAGAJ0BKigAKAA+MRaJQ6IhIROcBSQgAwS0gAHy9Ds1vUojppqmxub6/bGUYxMOBYMrWU7u4aKff8hCAjwAAP7/vcq/kuPBJ9IBF+ZmsUSV7pEXl99bb/MzI1pbOOc4V+0r6Icb6RhO44xNiJ42rB0mRlA7kq34MyIajEWQpJs1YAOADz57/5Qla/3a352Md/wywuHvMKKfKngjwtYCAp4kzjt6hao1ucuWFhryO9D4AAA=",
+  "3": "data:image/webp;base64,UklGRuoDAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSPICAAANoG3btmnb6WPMuda1bds232L/Qr4iP2DbTp6cPNu2nWsdn70wx+jhOuv8QURMAP5bBACJYRYNKgJ3d3I4VGOIQejJkpHtqUbNIinilZl5a6Ih5hmmTu47UUmVzL21kOVx5OEtKXY9+6fXyVrTmEU9f8QHr8y55sqHz6BOztaiL1/2/g+7j71+7XkviZt5OyIB2V68ui3Ljn5x/S/H1IztUMXGzO7tnpB09BdbVv8U3LwdIb0c9buMZcjLURt+Du4tEYlnzswsxkqMGD2xV8iWYKnmE6MWpZhFs4lu4mzJU8IPZ2Z4jMFtnDlAtkOzhJCiarRiWkog0a473RlUVLyaXldCsh3QQQgg6hylNeBtAQQAAuLjpAJprf2nU+TU8vGnxI0+PO75D8tX/aG02n04mKDnRh48WsGq2sn23C12/XnpjN9yq8o6OQERAASHQHPg+zWXHT0d6qKsklMgAYTTh+DO7Fj3zkN9x63ulGXtVGUGd6c3gpOCwXGTto8/0l0PdsraJYzrGQEzczYC6PnMQkcs29B9pOx0SqPv2fJYiWTmjRRI40d+l8/2CXv1107RKSy8ddXVtwy4JWcDUaXNTX9y7DjXXZN+KQY7Feu7b9/9aFa7NVFVYs7ZNDf1jye3Tvq17hR16H7pvu+PaPImIYhPnvDe1Lnl9xNnkbvin6yqOn6yeP4Rccf/iwTxheV7i6ec0moyVHZ1daFOqVONKUE0UZDbjvYtHv/JhMX9v88fO3b/d92SBhZWP06mSAMo6qkzX5m5auDzmUt/7xk/xeYd/P73au72dycvSEEbCNm5pHh27+6ve/aMeG7+pl8+XXngggkYceT5bblGaQBP6H1m75Jfvtoz8oNJM7rOjf6ha/WG0W+8t3sRstCEnvRB3dD9+NYtr3+zJ728el11+ssT1fSt0zQPikaWsnoQIwqqFNTaNeaQPEkegjSBuacEmApN3R0kVTTGGARNSdIccAgp4qA7IRqCYKgkAaIhSaIhVlA4INIAAACQBQCdASooACgAPi0Uh0KhoQ1WAqoMAWJaQ3GIAGhaiFGUE+zVc7rrg6YvtFTGVke1Is/oAAD+/9Vf/+qeUjLea/mw8z5yu3+5urG0LcaRsrp4v///FwNwkbutq3aH//+0Ld9vuFmP/vDRIMJQX/7cfNOVcrpDK+YIjGEunjsW6Bf2j1re+Nq0qD0AhdpjJ3jTeP/vC76VQBQk89YTu2gvLWAkSBz2mzzKCjQ6qsj9dLEfrbgNQ2Ub2pMQ/5f6QH9lWYzTAP8k2Hp/g4r3V08AAAA=",
+  "4": "data:image/webp;base64,UklGRjgEAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSEQDAAABCYVt27ap7HTIEf2PhPfI1OFDqIpb4xJDIJCcv/gIEZE5IUVt20AJf9D73QMQMQFJSbZt07Y1xpxr7318H67ft/1TtpFUzr8QLsovgc2Ubdv+/1oHG2vOxNnvxEMFImICiOckQcBdeDAo40q4WxrkgImIBhElCY/NRHlgKNSgojSIIFojEAdIQ1D1sjm9N6XtrKjS/UBINQTmC5ed7ptLw+Tk6VuGI0BEhRNRhBJ09zU37vnsqUcefm+D2U9CpwYkQSYRCRCdOyd95el3/9hZ2P3Ny+/n8wk1SbSRKPcnDMHQWPz9veUY83b1yZ/a9RyapSFpZWESDSHmvrZkw+3Navj7sCpiBcnirTc/2mlMQEmUS/9PWzXYXvu+xZ1Bf5CbadLcuvukpBnE60QlFO8uzhR5v/9BPNYtlkUJUNt/fvoQVeBeo6q2UFxQeVH+/P5VnSRVAmPa+252YVth7gAoGsoLbzg6bQR7du6K9vSeXqfd1hA0bSRfnblSwqLVBLbO+KHaU8EuiH+fUYiqkO7Rov60ekGjkSrHVDFTvLUQDPGMtemOiQoBuEXD9q9Hd9NEMS5Bdw9xSkaz6b+PigYhAYebm/87u0cCCYCUtF2cKwQwdcI57al2JgDoXvSH8cJeV0QwTgmKedQGrSKcAIwYLyEEa5wKeA3//eGv/zcLA0Bn2mrpG9Uouo25O01kzNGKeVWZw0mAQvZWNix6jRkG2nMCQLccFGVlTgeplOTo5bVYRgdASKpzdbTPPvr6hz+XVlYAqqhPHz8dk6DEOFXCMTWO3z/7+Y/lrZ0+QBEW5545oCox7qDmZ6OW5Y//rQ8rhwGCcte16baS+3FDefKME4BjbalfumplYMTt//4SDUS9m/nMMUT9Vt9DlhVljKOjjrtnOZpjghhbu5t1hImm2Sgvc/z24EnDUTUBLFZZRgKO8YaMirLMq2pnfe+wjJPAKhUfrZSkuxv2LDT+LWNROqq89ImkpNFsNUKrk6E2b720HKsyGhCQa0iyhNXOsXPtYKO1//4Tq6K5oyRFBFV/V7et5fb//wzmgxkOKEFaLDrNVLwY7ngRnX5Axi0WaZoorCwiDqa7RRElYGYADxwAB3GYA1ZQOCDOAAAA8AYAnQEqKAAoAD4xGIlDoiGhE5wFJCADBLSAAfNgOzTuS4YKUx4B7Xia304zumYArBhye9CAU/ygIt6DXUKFgAD+/74GXtGbV/PFhiOe8+QzFLZK2SoqMqX/grOh/1xZensrZUOq5wuKg88YHrz82+zD/rHz6yAH8iEYMUTIa1vLiOFfUV1HGkZRQkoQuWt7gXN6nUWH11nfcCFS28eJWJ2Nm8m7gMEj8OnpLacu2V70NCt2sL4LZlVoReMStwJWXMbXaGVYcjjEYsgAAAA=",
+  "5": "data:image/webp;base64,UklGRjQDAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSFkCAAAJCTNt2yhpv44/5GGI6H8QWjxFn02GQCA5f/AVIiJCB5hp26blD3qnK41AxARMgCRb2w5Jet/vi8gs22rbPbTtnvU6tCXOesZZ2a5q27bi/752R+wgIiYg4y3/4FmJqlDgZpEwAxGNVCPCQ4iUTA8iGkcE3YOKkEzNAXi+GJ++0AHAPS06mtfWG+RlFx3ujhTdgpnJ0pVXLmvRm807Vov95gNRBfdjQ9mRDXH3qUcPj8auIFxIJhue7Dl3TMFvhef39+xwKGmAf2vgydoNn95peF+1dfmxt61fnZgkdRfer3sfizIJX1dVn6qGOYvckujrwBIx0WCxuc2/8zb33e0QLNit6lrGCvA7TaqrJ75agJvh3fXmQo0AInZG2vzhvZuZh0Sut9ZS6QAj17LZ09884BBhObkxk5EQECoak3dFiVuRO6z5alGhU0kRRk0XGwRgOD1pePywyeh00Co/P6kPTjhB14reZqeCQmudZmkgOBAwtN35VhYAwGMZmG1IWRAqvl+tdigZaj4+rDRSOSBJVA/UuzjEGrsqckYiTZIITY9fVQehFydPW5yUVEDCCkqvVRDwmodPKhMATAUUom6iODagfLhVSCFSJYFQ9e5JuXnxh9fVAWRKIOlSe73IQ/FtLzIQaVNIq3z8MYfodjVIMq3fveDLC41fvS0NngWFzpJ7+ehxUWQiRHokkqIXb8I9NSJTkhZ/eF3Wvuh7jmQGIIn8g4oioQqRIUlYTefrrS5AJqBEWlpSUe0igmwpue9rgHwkyJbUOB+gImQ2ENPYQCGRtTh+J/4bAFZQOCC0AAAAsAUAnQEqKAAoAD4tEIZCoaENV1aqDAFiWkAA+XqN9Z0GRm/Kv9DqMAcTnlIeLXi818DXlqAAAP7/8Sz//6+DWxgzMhDFFkuxnZ+nJrU2r4QbVAi1tcbb1UUiQ04ful0KREeQ5qQx+c5LCUoP9NjMjyLD///cX8LuqOmcfg554BG8ayRhjX+x8P4TKhEpee3/MST+vDRROwnSsuoeoy7dar746yTBFVOlIEpx4jdL/+42sAAA",
+  "6": "data:image/webp;base64,UklGRggDAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSEgCAAANoGTbtmlbmnOtvc/Dt8O2nVIuUqxLlCBKEfmIMtjI2bbNx3P2Xmsmnu5nOiImAKd26kSg0cSU8jjRrLhnRFceJ69exGy96/iYl1oPLq1Gi9RxYa3lgXvff3y5tcTxcd99C2786mdEHB+Yje/c9valR3riOIt6/ZLvr9qdJHQ8BKlIgpE0bZyVlKoN7uY0ZUqaEVIqmebFvDsyAjMWBAuaexmu+ebfjNCMtvaCsx959O3SI6HZWdLc5/rQIlOJ1GwoimaGccEF65lKzUQEQKO1Woi1ARGJbRIkQQAZbiBM0/wc9tz34i+ISEmCAJq7m1GJXJ2rAJXT7nkeeujFb7khI0JJM6/FCWXE6vwACr3NzzvWjwwpQNFbdNFKdSPVI3u4GZG9DzROCw4zSIoWgVLK4XNdOU3j+v8HDzsVK/3QbvZ+zoFSi1O//NZb0Ie8575pzD72tfHOK90Uq+M9F2htuu8SHwYO+157gq2TXoCn/0ZrIhgpmsMBdIi1YN99pfZIkf7bgfU161MEYAAEJQWYeS0oe/49GgJSw2frD7/7a7IrSKMQCQKkOXHs9m+Xrp/MpEh+dusDK0tLaeZOCEBGhogcDu0fn7tyMDNEX99/xx/zlx85sgCEBAqEOQ05La0vL9/w4Tjnpuj542Mlw5ApCBtlkAms7MbF2w96pbL31d/XzSgC4GYUAUGSYvHYQnFA0XqPFJ0EtAlFAJACoJcy2IZsvaWADdwEwqYSaLVUAyBlRIYEgNBmBARQgLmR2FSQsKmwQ+FMGlZQOCCaAAAAMAUAnQEqKAAoAD4xEodCoiEMcoAQAYJaQAAoLI4/AVWE7UBvpdK16He5VCqliASlygAA/rT///aIxEYmc1/wQgnMCUpWZKWxnZP/zrpahkYyUxTACT/yfFP/AmrA2jiVqOp736zpyNGEsx/s/AslatrjsLV2f0KRDpXlVfeZGyyJfaAoZC/IcyrEh33RVihh0t32G7AlIAAAAA==",
+  "7": "data:image/webp;base64,UklGRgYEAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSAoDAAANoLT9kyHZ3tI/IrIa4zm2ba6u78orY3uf+wVsc2XbXt7n7mzbtkfnnEZVZURsZrLORURMAP7XySsQfG8QEzncfApiAuBuVZiJGWpuPgkxscDM3NKIWcQjmyawWCBVM0+TIDTc91NhOlWQRZ0R16hpLCHIed3LUNpkCEHPmXZJoaVaBbGdfNYGV8PkJNmT501/IWhMo8C0/fvdO0pL4PqbzVNehloF4mzxK7P6omFqluL3zZ0WvAI8Q8wI6V4GRDh5ijsVI9s7ecYEGBgOi9L8vNFwRrKp490TGl/1B3INiCymu5fZw5uYKqm8M3D1M6O9Mjzze1vx99/a6jnyq2+2l1LBTT2//9RTX/y9tWnfh+y4tz7onXnw2JX79bpIEsEc8tuDJ5/fS391Z6O132bH19cctbhkIngCiIjAfz+Frasb+Qxq1fOv3imOnG0wwJBITFRGMH77c3T++hrln/wyNHsuR+K6OSyFBOvn7i4KVYwUTXRnzQCHWq1v4l0zRSqTnDhHMWleQ7F0oTT6+3t78zvacE9xt6fH6o2e3jrPnq+e/fq7Fa1W3qV1DSS7mb/y/XCjp5HRnLkR8udvVubt9sSspYElyc0zgZcD06f/ndeRL5g1NjKesVtBxCkwuJM191kQdxV5oHJw+qJ5f764R5wIlOIAwQZP1Oc/yTZt7KL58Yf5irPXPzYiDkcysRCd2Llywea+oZlu8td467NPbzvk4Qg1T2IR3dR74/a1ndjo3ybY3Qn1H164u/ZaFtWSKBC2/fHb+l2l/9S/ir8cW8TZwCfDJ71BXoWI57zbbHQL+/qZ3Ov7r6B6PbbXdXO4JwHuZKVbjLp7AoP9krGwiBMh3d3LX3eOt8hjHgGEWmDUpn9Z7wVVULOPjsGnmWuMCg6ZULFWHt4EDmmmUd4YvPAxMEwdRAyPJ3326doYuEKM2rl6xSIEweQa+f5Pl/VxJmmuGun7P6YH4cncor05OMeCUAVTi5JFYZpKLZQahFHRTc3BzJjCTQ1MTJXcYSAkGtxA2KuOio6KVlA4INYAAABQBgCdASooACgAPjEYiUOiIaETnAUkIAMEtIAACksXbnX3ciy0dqOsURBRD31liL1T2uDJAxu/JGii8AD+/74GsAUMcUZcV48Hw+M9JZjK0HFguKSv2n8UOamcN56L5FbqvS4NSQYeY1jfh+F/jSVM1UhBe4FhOT95dAaGR/ZsFlT020Td0TgFYCeRNp/D4gKgmRRQShE+eHOsHK1N3xQRbKu+s8xAQScxv6pHMf6cKmVnEZXFkIbGylh8lSC6B3alw71rjWhlEYQ+0tBDgw/ZybhbYAAA",
+  "8": "data:image/webp;base64,UklGRn4EAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSDADAAABCYVt27a4e9IR/Y+KBlH//0tYK8EQCCTnD75CRGTIBgNp27T+hW/7DURMwATQtm3btO30PuZca+vatn3vU2zrUR9h/UGekw+wnmzb9rXt5Pjsvdeco8fJzhdExAQQDwlCgP5EgAL0nxiMgEsCDEbAJRXIQLPs7gJpFpiV5Y1g0XOZs2fQQkAqs+d/JzEU6YxFz+acXIxRCy56esBzjgCzmK+Y8/TInyxELL368RNKiiRYiLkzwd2TLFpQe4zn/O8EAMWR+fVECQTV+qWoZ1H/BpRUfnneqp8aBhFVWP3R9GnJ8I9ImhGusH//fZ+dakSoO3pBvv98kjRAf0GaxWAGz47nLrz3mwMjuTZ+k15ZvTqFYBYICSBjKGIMgHtG31Pn3rbkh22X1/pfnX6pmwWW0czhYIhFvQAD4HIOfvDrRUsd2/ZsXC8GI8pQBs+eLcZG0Vw2f1xMnfZI/+ihfQOTxiROXTqhNa5RK+KU2i8DuVulEOpx3kU+0t/vkBdW9nWq6K0xTXgyIs5avXZgc6fTDUWcdA22t5VpmjGHk9dR8LmieHiEjmBzbnrykVbJyKnd9vIJ+HOAoAhADpQrHYRU+ZJxZaBi32eLmtWf6AA0l+DxAYOMAkAc/y4QYjXpwvZgSQAqzIng1HQXWQmAlM78sRI86/DopgOnU6ZpxhxjBiAaMbyrI0cR5+GLgW7ybup/edVNE4Y6FgIbteOHVptsf9+Kmubn7NZsnHrg9cHhKqdOdfydvmVTG8GMkYfSSBrU6W0zJlXu7mng0Ob9v/wyXHmuOt3uwf1lDDGGZqsxodM+hZM72p2RjqeUq3Z7uH+gndzMqKrjkru75bzUD83fs9czAs3IQKvVCgMIeO4KkLuIPG/K5nEHTiY3GgkyxBgIAJJykkugEDR+zZbNOVUSQNAsGPH3cpcAyq04fGV8thmSAxL+a7mzdlw3f3bS4RJ6qETalxdd90qi3NWLLMbRb+7xb0rl3khifS9vf7/PPPcCcifD5uvT5lBl7wUgIv6yYPZ3TKlXog23ln1Lzz0CqdSqH0R29FpKftrhUK9c9v2xiV2i9/LRHIT/hdzBfwFWUDggKAEAALAHAJ0BKigAKAA+MRSIQqIhIRjrNAAgAwS0gAPpBTsW4Ecs7SL/iBJQlIxMEJQvEM2VdNwIszSX2BlyyjDcROEG2//YtAAA/vfpn/oNXLNGhWlCMZIz2F5Lxhwa3/oUSPhkzsgcWMbafJEEJqQz5wkiXlCtn+lMu+zpo2qqcwjsntHk/Yi50XVqYK9LkHuKjzbq03YiTR/1H+K3QBoRy4SpS3ciL//tFvuDDekVDQa5qLUsCDF6QrPnWaBjpcL/A407oic7G0zc8iXPCWOEFcNjqilbKO1rm7NjmYQelZ1ZAbXGE2b9soOiy18IQEW7P6FtMWNYAwLGlf0y2t5QX0S6sSrZfBFNs00CvWP//+OFb+ZjcxQ6sJVTa0PgRqMG5iPj/+9wyAAA",
+  "9": "data:image/webp;base64,UklGRtIEAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSJYDAAANoC0AkCFJiojMrNZ4bdu2bdvG6z7d690P2LbtW9u2vdM9M6thd1dmxENj9QMRMQHwQmOKPCtEVIgALMzyLAiVIkJ07JyIyFMj1EorYh/EOWaBp02klFEuGQ6WVyABgzwlJKWNds0nN8TqhztPViDDU0QAINJGy6TBtz88Fmo8JVyK8MSIKClKazs958dd3VoF3OM6+QwikhUiAgETKWUHNPmcJ+SDMcYCMDtmzoSIpBxrJoJaE7ZVT68GYwxpAmFnHbNkIEXcsM02g+CGlX89jVFrZCQyBp2zzjlJpxTRtK+VxxLptq15IzZi6reuo+K3rj82aH3nWFJIKX/g5e0tatDW97f3I093GhpJ3q9q0CL31p/FyvrsOB3h4H91kMU28B80VnlD60b/2p9wlYXT10//e79Y61hSCPKa7S9kdhCK5wZz+/nbHrRtpl15dN/NpT/u2msyAKGnRJwTrAmHAl0g2qFBRZnvkg7KPm/9z59RzcwpouKJ7lFmS7FQiwKwtRsVFrkTUY77pD+ZOf/foIgAAAv6J9c+uqcYypIDfP9KQrXHVmOOH+eEj1WHNt5AglR27O3ov/hvLVB5dnzyRjj/UU2rHY1fvrCfEwl1vE3DKo2SxlF09+eyOSJ8vnZRXAFZE/qt4M2DFyHuSkvbJTRhGuu8zVU7rmxW+Phsr8ZV5XlhCFf/13vTzzXWr7pQJxcUAICwtVb/ZHYFfr9SfffOoO4Gy8VZ3PxS0X5tq6JhjzAFnPiW7W/Fry6O34ldK84NFJd0vpMbuhpesVfYZ8QMwmx9xn2bm83qlG9vXYnZUXi5tuKyEZWP0DkEhPQiTqzTFYePJrxQYd2mTfofV/U5eK+drkYWgWwxieDEQHkcvEC8m/u8V0AZP4csgEBmBPS7xGIBZiYBv7zFiN8LuoNHeeWsASFLQUI7d9+NEAg73+859vjRoUYbaHorERakLFAkcF5/eGJ3pUC46cDI7n+G5CsDOc22FBWwwiwEREL/Pf6vc+x+blG8+NXywbkUUDUjat7oKZQViLDzdn07a2Lj0n2/Fg/qSyqgavoPfadzZ6sVZM3snIr9cRWgqF/bPKs9KBjT5JX8zr7RlJWIOGfRs9Xa8x0oI22bHdvUtj1opTErEBbrnBUQQVKKTNnJqw2bxrXSCE8ozGwdi6BSiggfSe1EQpEieHJhZhFEAEAR4CQiKoSnLJBWgIVBCOGZC4jAiwpWUDggFgEAAFAIAJ0BKigAKAA+MRSHQqIhC47+zBABglpAAZoFTfJEw/t6dxaL9KvG9dzK8QaUX9L3V2cI2MOrEromJGyg/ZSPHsHpX6yn+OmKAAD+/9i6//+oMjf/QRT9bGdSO/5vSe589+RTXi5KborhsWjzX3x85eeIYStAjeSfvreUIBvlcG9da9Ece/e0zZqpGsYJ2q+vkoJks+YxmS+Z//qPK+pwp/WPZ1yymPRh/fOLmCTfmET7XUkglt3TEkF5CnHTDyjTV08gdab6WFEhRi4sQrERotc4L1aQy9sJodyAcfKVylNmFnOeSDUvKecV7FVz1+KSA7WO7B8wA3i07uuOeBZHPhqHAkKR2E7reQm1PrTJL8LAAAAA",
+  "A": "data:image/webp;base64,UklGRvIDAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSPUCAAABN8egkaRIVBP8m4Z7DUREDn9Hzix7jrwM0+VMXgQpspeQlwmFbdu2qaR7MBH9j2Bv7Mn+vxZqJaC8/Z8hSfopMrOq3dU5PbZte2Zt8+S98k/h2fbebI9t26pERPyWUeNzREwAXHUjIgF4vVBIzILkvcULgkRsDAuodf/S80XEIsagZyuWEQFAzwcysYghF08ZsmoFRISIcB6RmIwR8TRyzP5906s/n5aICREQw5BYjBi1fSbnv6zrv/KOe1sOlolhBEYMIjYmZtc6vbb+fRnfuu2HdPYCOGYSVmEIRRKTQDx+2M7PdVxincuXr4qvm2BPMUQEGmRMNHT8vh+WTb9Wtu2W3FbObTnYd3bfU6cShmAx0L14/0c0pjvLK6e4BKCk3JNM6rPcCPgAZKTqmf2L/YbNGJUDlRBV+ywYdA6WEYOGIKnaX1tuGbBm476iK91WejN9wblvOwYSC0EogndyevXu6Q935b7WtU+Hz4q/23RmFjpADFPvuV6cXHWuz5iKabXjJ6z5dn/s6mq1AVCvpl6y7j5MfWuY2l+XHYOsKLxzCg0qglclTmxLjXTzDuZCVcFDo0jqYvSFH7mkdpKPD+78whKXgkyNAHEZR0XfWbN3/Qrp71vTh//8oQ4JCaIGKRL6Stvk9JfPlp2s9Vq2fc3QOU/8sTECRg0Tk855at30CZtfm9a/iFqOA6zbPPextl/3G+cJA4hMbcbTeuTbLzdxZiWuA1dOLjty07hNBRBRACJ1DLiz17aVu04zoHpEAAeRObN2QIyCAQDa2pmYHv3P7jidsCsqYOvd0+Ov3uyeGRmGQFRfaarKWeqTLl+hmsdand339xfqUwZhAwBeRBjOne54vuP37bY6YtKWV5ZPGscuiQ0GqSIRAVFRPvLAps2LK5+/M3helGMkQhCuAAAIZLb81OOOjgOvmiVppizMCI0jICC1tUZpv02nCueZmRHOOzY1NRnF/KyIGIILGcWRIVfmkRDCBSVmAvWOES40wlUmAFZQOCDWAAAA8AUAnQEqKAAoAD4xFIdCoiELiswQAYJaQAD49nLOqInMDbBSnKm/j1mgYM/MVk2DAnEqpYyzegAA/v/Yuv//qDI3/1VZKeABk9tdAV9kx5Z7yVr2GmudrEh14AvZBGbspJ+DuK31VYTPRPzVqJuDuGqMU4/r34RI7ytYIOn///anSUiv+9Pl1+Lb/p4FP2IYflkRhZI/fg1TGZdfqXDV6RABn1ZDQtUo1/duwAyJiQ4UL5vFdaJs4qEobyhyD2azYOe+IhEr0+Zc/wDGy9//+1OKtYAAAA==",
+  "B": "data:image/webp;base64,UklGRioDAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSEYCAAANoKxts2nb+f+qMefc1vGJbds2ryD3kHtLWunZto1tLY5Ro+oYvaQXEROA/1kJAoE4cwSPEwrh4eEnIwjyZEIBI4QiZDHzCACknBAEGAgIhKQDIqxDMTMHKKKqKgSDCAYBCr22FKUv3PvWzzVXJ1WbpISHRwAgCY049+qvtxPbK26NV3q5mIumtlWg67pOhUDNI/O9t5+PNzbnDlxW/10/r8tmLqnt0tyVl+4XqluISliUvPP+0vNXM//z/i19zkDhkhq5+snY+v2vvze2B8XT9MLSXPfd2jXnXr78Y++iu/Dno7H8W4YIDr/Ye7WZvnhxebJjzeORjerhi/XdfPGl5/nWPwcvuuDC1fd3IHYheudNtDrvTKlReB6NNwfN4mL99b1fhzHcHXY3H5wMS5++/tIDEuP+pQ3MSuXEZDsjdfD1pz6/MJUmpps6nJ1ws94nnx686+Jm56/dIEnRxUOqO2+NL19grVBtuhasnrNt/fhre83t13e5CqmRf/8Odz+9/N6G+4RCjxc3K6Pigz//6k/ffVvTK+PB6orPb3515ct376wN3txQCEmEm5VcDNHf/mP/wzoYYdJ3S2y98e1ND5wzkKmQwPHh1axkswC+mnhufjalpe613yVtfrTcLc1PEicPd6tmVo1f9B48AHR7f1sTpMlWYRSeDIhwN8s5lx9/WliI1S/vurwKQElJiNMMryWPRmX7992YuPq8pAAgIsTpu5cyLgUibdJGBWfe3Uouxald2yrPAsLdrDpEhDjLcTz+GwRWUDggvgAAANAFAJ0BKigAKAA+LRSGQqGhDVaqqgwBYlpAAPjAc7XvvB5RhYB0F2TNmoDiaMHpbYf0xjZ9MAAA/v/w/8/+qLiSIYfp6+qGdP1OIjRdmVSfOGR8EVGZnzVP2eQjiIO1gcngnxTlwItF3CntBQBbnmzSDwGLTqFRjZZtrCdB01x/3zroCGPwmjwl1JZIdPQSrqw23hfVMKqm+r112ZF5sIrnYJ+NR4MdWzMx4XBwV+vH26XRwrnL33///cX4AAA=",
+  "C": "data:image/webp;base64,UklGRoADAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSI8CAAANoJxtkyI5+iMSCsTMzMzSSQboLhtkF60Zqz2vC8xMw0WZEbHQVaryICImANPZBx8DAEsppWyYnbzzTN4gKiqi8zkX9OX5193BV5+855RtPgrO366+aPdd/elLy6LzMbuwYwf90FdlEsGC5NhsN4kwVGwBIzj1FYmBBEuaMH67tnvtKH45puAFVNV9fu7+j+d+27mQeBHR8Gv/PNjHZ/bIQkby9ZML6dvzZkwLQJT4x13XvnVHhQgLGgxue+v4d6e86SIAMXvDrqxisAWInHP7DRd3tkTFbAHvvD8KO7T/L0mSMb/zwe/2MLqy2eWUzeYiF4I/KCCcqNZkyJlsJudiKGoYW3lqK6VBBLMScyzC7hYE4CzvpGFQnYPIxSKGAgAIBw43uR8G1RnYxbIMPsEIMH/WpaEdkugHsQtlFauYQQAIJ442adjps9gHEIeirvYdwnh5c/8vTdv2ojaNfayrA6dgNAK6e+L7rbbtZRpxLKpdF2CMCXZ/7/dt1yed5mNVnIYxgK9b0t3nAeBx+r3rB7EpHGLcdxD/t63BuNgNkO269XPbpzSFnI/xCIwBENaaXfux8pxfS73IGLGPoayxuvvL+HAEQLb79FpKg6hNcaWNNB1Q1lh5IuWUxojYkbkMWrGtrH5kbxaWMRCTr3I2ADDeBCv2KgEgvweN6pT06EWLlYS/4DIfZACEfS/Of/SDV9gKmH392S6uSmd9++ulk0bf/3SkDpS7RvKDw0SGlSb6+XtXRiLV3j07QvbLpwieVHLjLx2Bw2rVLLrddEnIl3UIrGlo+oQQy7om72mVQWToU8pi5HyMgTQNQ1Yj52OMYQxqIjmLGoic8w6QJGIGZuc8E8bNVM0M42amZpgOAFZQOCDKAAAAMAYAnQEqKAAoAD4xFIhCoiEhFxTMIAMEtIAB8kF3p1RCLjqY+4flsOgxEYn0v3m5DV6A5Xf/SPf0AAD+g///7TrI/2h3a+Bg/oup65LkMBRvSP/2m3a/75zO+ktQn3Ziw5H7Sflp7CIqqCXXYDR1T/8wQL/2kiD/VCx1iA7x+5luE8aVBZDJN++y7Uavi+uKwsLRIg5WjQ3OeyK4F8KOGfbhDf/VzJ58JqGUGLt+Y7UJYDUDYlI0kq8qPhsMv9PxJ7SpfIYw8AAAAA==",
+  "D": "data:image/webp;base64,UklGRs4DAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSNECAAANoKRtt2nb+ccYc63tfW2bpdi22YA0gMWU0wHWbSdl27Ztbi/MMUZ0dtbqQURMAP4vSwhCGqOao06iEILAo5ZaD0tI0lQyzWM0r4FYkgZfcMAN32kRtRYJAUcs0dPunUSNVg+1jvrw2Wv0A1Y1r46FdVt+z7LmxW+YW0T1whT3/Pbnqi/P+mHCal4ZEYO3vtVa8v5RjZ8FZpWBydqttxfxaPWabxNzr4yIjHXQpFKWzgg1gADBDFyiF2shggcaC1Ra0akGEDzhQQoLzRxAdQQgwW9dM+7NAEf1BAQdtRFt6YQAeFUEeDKNDURbnANw1IB04C3X2VJTqgEEb/+JBD7tk6EGAnl7AHae9SkC8GqImeCdP6M4ZUspkpnB/xcRiwi7Jn8qQLqEjWEazXw+Yk4kiFshvys762LhwKYxqtk8xJxIwloU3PuKxDlbF4ZpmpjGqGZzsITQIF66fvUG3LgnaPrZpqvyH777cUZlEaP5AsQhbcq6Y9Yg/+auZUeVSL596Pyz9u/kl97MizyqLcCSNHjvyfruCz/qzuO6wqW/98ysu/vcS7JHZkURzf+LQuBlJ/9017odS3pdDVEbSuVg+s1Ha67m56mMhgVY4iGT+89e6e5DtuN23TWK7aYGfSq79K0xTBcCYVt2/Bo0+v2vnrDdK97+dfeRcKD1TTf7RRz+X3CFtL59OsI2XDn8dYrlsufnR8ix4RTNTJjw365l/ujL3e3tNNVDj/l5jGVL4v2ZlvmPny87Ya2EhUwLf572hNDoFOM9NsGS1H9ePs1K/e29bcvDHK6xoJg7S+j0/lgc0ZgiGRZREZoegmAO1SI6wNzp/tJhtkno/eoRgCRBaA53dXM4vL9kxdoSB3TQ+ZRAIBBhbocDUNPy2+Wdcdnn3xuLEBiOSt0K+/K2pNmUrBjs2y2JoGrVMpvmGi0EabXTwFW5ayyKqAoKIUlDoLkAAFZQOCDWAAAAkAUAnQEqKAAoAD4xFIhCoiEhFxTMIAMEtJMAGBVALFAnmC/4Iz5lgHlA70Gdkn2zIG/468AA/oP//+06w0rRUJmtMF/9X9v8wwn+iYAdlTBRYvHFrVu4xMb/ySWvI67JatZiQtQ2YggH3/1ozH/p8+Fyb/t++Ovpi8x1YQ/lO25WrCbZm62GXxC7pBfOkDQBD1jkHMK5ytQLs/4YygiUPyNJmCFv1rlS8EPD7TH2o4K+1/+Vqw23Piye0JpcaDiv3dysDG9pENS2S2VSwmtnMj2eAAAAAA==",
+  "E": "data:image/webp;base64,UklGRtADAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSNACAAABCcVt28apR+5Wiuh/AIxJmBkRCUT6DYZAIGl/8REiIrXNpm1T26X/P949YgKS0rVthyR5RM/zfl9EpDML6ewe27Z39mxt27ax08q2PTvbtlVWIt53U8iIiAmY4zdAGgwABYCZASBotgRBQigMIgQANQUppgZbDJBQnCoImsAABUCJERtsISErYdiGwYiwo4F0CJBIT3dhZvMB0VHtgjvfD5Xt5Wfd+sYuB1415sG53be6fM5iXcgHKZdd/ZJ6u1yuNA79+ZdVv91s3weqler0umetUI2tpzqPuMhtv9KKK9Umo/rwcVMn7Nj6+smnh0t17a60fLXD/v8BvXgeulB2OShbXVYa8TvfccvOK8/k3vv60Y3ddHnF4aFHX/rBYl1Acm+uPKGl5rsfX1nObTEDpl+qnfr6RL2k3W1/bs3FNg8ozl6vzzL725q7XLTrnBlFnt6T/xd6s6tUV+72DPMSoJ+tF0YR7VB4/qcAALqrrrCx70wNVvLWjhcAYOpdOTdiLHXe+D+EtVdZtQAdKRSD1GwPizQ1dWHFj2hYOvK5btApbfcD438LTfG+a7YIgCJBVO5OWnjlic1Bmyp6HUUxck5ILsVL1GpP8fur9079n83ajNYD74RYIine++LgxPR1ek7BDcjERCPr+gFQxDOfG3vv5v+CHNvTgxlxTtgfF/h6cZMXb/gVMyPF4SBwQvSRpIRhunTBCj/N9P5Kl4OUl/4AYJDKRM0To86ncSOVSnuyb1Gu6J88vvDXrXttEOVzAfptGkMRgSC0TZL9gpoBTsSoPSWI/hvM6IwKGGgJwAjQYKDRmARgogRhSN5oAI3JGAyggqIgk4CpUToqUQ+kJCDi0e5OT870Ou047ln/SNFOanxkKpibVY2RhNr79/w0+c3dX83GsSVgUL5xRRZfnY9OjETN4jAcATnXMzAJWCwOAGJFsmZKEDBYQgAU/QZWUDgg2gAAALAFAJ0BKigAKAA+MRSHQqIhC4syEAGCWkAA+Up0a4gW4QSlgMYuc+OHlYYsi5LQMlUtfHCHEAD+/74Gr52v+vo/GIa/cI0C7FLy4YGl2fUNqbUpn2NShzgMha0RiYzyGNDkeefdN5sos8W88zy8IsRWhQcezzr1v0Bs9c6VdNk9htmisMiWV1fH2r1oGuV9NJKGs8y7aBrbjMl3tpw7/+Ft/ryl9vt3O6/TGiY88g3p1P05K/l5OK6xUQYuuTtbOOlc5EZRA8yfLV7InYbmoiP74bjBf/2IWAAA",
+  "F": "data:image/webp;base64,UklGRvADAABXRUJQVlA4WAoAAAAQAAAAJwAAJwAAQUxQSPcCAAANoCwAkCHJCmRW9dq2bT/btm3jH94X6PSO1sk2Rmvbtro6MyPiMKp+OkfEBMD/R2zD6oaESKBqZvVBZGYGERGtEzufmWGMSbUeSM7ndnH1LwghmdWDfeYGXGzfnAxBUh2QHXs+T7tO/BNiFLXSiL2DYSPW+FfXHLIURctCdt65c0Mzn7u40VKMamWRdzbeNU4NW184tI1iKo8JKhce2j1VV8y68VcBKQ9RFkHLORkWq2/lPzO1khBReiyWGcMjVM7CBY01MrMykAiw+taR3kiQ8MjYiwnV1MpgIioORFUAJMwHZWrJtAQiB4EtRRFgdh7VgySwTiE6HDGnlmpiCkiuQpWW3ZYUOomAxJTfUDltCgxqBIP0k0JFwawjiEwEbuuqS77aks4U1qWbG3f1Z4vHRDNRsw4QO0di9P2Im34okiC5ykUHd1xsRJIkdQDJZS7reiwc+fPBXssyAAjz4Z2LevvuIcaY1Nph9jlNuvbt3drsnm844SH2mbM2LMCJ9368Q4uUtC1Cl/kui2H4r7VTP989rcFDPDe9d3HXrufBxD+KGEWsFaJ3Tufpnrv2b+JNu1/buRcHDP9+5MQ4iw7cWtuAMYm04bynHjMOrLrgqr+q+N2SGxvxnOPLLrRui4/8dv69f1UlJlEAIOe8LoBvJ6+7k9bxoRXP1Sz/dPbANAt+nLz6jgFrMMZWSORs0KSNXcav7nVnwwn+Y+R9unfPPBkweztN2OCfXHYEk5gBEKFeWv11NkjLHUN/c6eaHoPXz+up54Uv57A23D7tdzYxAEAMc4acvKRPyPcU17Wszxq6+bNzivmTT13SL+RHqresX59ZK1PRbwaMTGi8WRefEf0wLmGX/9F9dEKgLfGymmMAAI3w519ZYrTkw+wpNd6BIzRvbugaGVXd2SkjwCEAiASxYGZIkJmRMCgqWwAzRMwZfSszSSlIK0R2hKSAYElUWxH5jAkAwDSlpGoAyMRMgGCmKqIGRugcI7Rhpqpm0GEzVTWDf3MAVlA4INIAAAAwBgCdASooACgAPjEUiEMiISEY6ZwAIAMEtIAB8t3yXToyDRd2xpaxxhgaFoRsRngP6tyQYge3wX4AAP6if//4smzis5v9/2rd0TDeikLUtCYrRHdOcHk0z8khYCmW05cSlr7I5D+xN62Hf/64OL//uIfwbhkJ8lVQbjztF/grpotOfYCdFlNBOFihhYmygB0DeHLWA5tQFpcW0+13JgKaN4YAh6XAd89E1JMDLELoCv6cKFIDjwKlpbUU+DWM8lXF23ZXmL2KgMiKetqeOiKAAAA=",
+};
+const GLYPH_ORDER = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"];
+
+function normalizeCode(code){
+  // Always returns a 12-length array of '' or a hex char, regardless of what was stored.
+  const c = Array.isArray(code) ? code.slice(0,12) : [];
+  while(c.length<12) c.push('');
+  return c;
+}
+function glyphIconHtml(char){
+  if(!char) return `<span class="glyph-slot"></span>`;
+  return `<img class="glyph-icon" src="${GLYPH_ICONS[char]}" alt="${char}" title="${char}">`;
+}
+function renderGlyphRow(code){
+  const c = normalizeCode(code);
+  if(c.every(x=>!x)) return `<span class="glyph-empty-note">No glyph code entered yet.</span>`;
+  return `<div class="glyph-row">${c.map(glyphIconHtml).join('')}</div>`;
+}
+function renderGlyphEditRow(idPrefix, code){
+  ensureGlyphDraft(idPrefix, code);
+  return `<div class="glyph-edit-row" id="glyphrow-${idPrefix}">${renderGlyphSlotsHtml(idPrefix)}</div>`;
+}
+function renderGlyphSlotsHtml(idPrefix){
+  const draft = glyphDrafts[idPrefix] || Array(12).fill('');
+  let html = '';
+  for(let i=0;i<12;i++){
+    const val = draft[i];
+    const pickerKey = idPrefix+'::'+i;
+    const isOpen = openGlyphPicker === pickerKey;
+    html += `<div class="glyph-slot-wrap">
+      <button type="button" class="glyph-slot-btn ${val?'filled':''} ${isOpen?'active':''}" onclick="toggleGlyphPicker('${idPrefix}',${i})" title="${val?('Glyph '+val):'Choose a glyph'}">
+        ${val ? `<img class="glyph-icon" src="${GLYPH_ICONS[val]}" alt="${val}">` : `<span class="glyph-slot-num">${i+1}</span>`}
+      </button>
+      ${isOpen ? renderGlyphPickerPanel(idPrefix, i) : ''}
+    </div>`;
+  }
+  return html;
+}
+function renderGlyphPickerPanel(idPrefix, i){
+  const options = GLYPH_ORDER.map(g=>`
+    <button type="button" class="glyph-picker-option" onclick="pickGlyph('${idPrefix}',${i},'${g}')" title="${g}">
+      <img class="glyph-icon" src="${GLYPH_ICONS[g]}" alt="${g}">
+    </button>`).join('');
+  return `<div class="glyph-picker-panel">
+    ${options}
+    <button type="button" class="glyph-picker-clear" onclick="pickGlyph('${idPrefix}',${i},'')">Clear</button>
+  </div>`;
+}
+// Refreshes just the 12-slot row in place (not a full render()) so any text
+// already typed into other fields in the same form is never lost.
+function refreshGlyphRow(idPrefix){
+  const el = document.getElementById('glyphrow-'+idPrefix);
+  if(el) el.innerHTML = renderGlyphSlotsHtml(idPrefix);
+}
+function toggleGlyphPicker(idPrefix, i){
+  const key = idPrefix+'::'+i;
+  openGlyphPicker = (openGlyphPicker===key) ? null : key;
+  refreshGlyphRow(idPrefix);
+}
+function pickGlyph(idPrefix, i, val){
+  const draft = glyphDrafts[idPrefix] || Array(12).fill('');
+  draft[i] = val;
+  glyphDrafts[idPrefix] = draft;
+  openGlyphPicker = null;
+  refreshGlyphRow(idPrefix);
+}
+function ensureGlyphDraft(idPrefix, code){
+  if(!glyphDrafts[idPrefix]) glyphDrafts[idPrefix] = normalizeCode(code);
+  return glyphDrafts[idPrefix];
+}
+function clearGlyphDraft(idPrefix){
+  delete glyphDrafts[idPrefix];
+  if(openGlyphPicker && openGlyphPicker.startsWith(idPrefix+'::')) openGlyphPicker = null;
+}
+function readGlyphEditRow(idPrefix){
+  return (glyphDrafts[idPrefix] || Array(12).fill('')).slice();
+}
+
+function renderPortalBox(s){
+  const isEditing = editing.has('portal:'+s.id);
+  let html = `<div class="portal-box">
+    <div class="node-label"><span>◇ Portal Address</span>
+      ${isEditing?'':`<button class="btn btn-rename btn-sm" onclick="editing.add('portal:${s.id}');render()">✎ Edit</button>`}
+    </div>`;
+  if(isEditing){
+    html += renderGlyphEditRow('portal-'+s.id, s.portalCode);
+    html += `<div class="row-actions" style="margin-top:6px;">
+      <button class="btn btn-primary btn-sm" onclick="confirmEditPortal('${s.id}')">Save</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearGlyphDraft('portal-${s.id}');editing.delete('portal:${s.id}');render()">Cancel</button>
+    </div>`;
+  } else {
+    html += renderGlyphRow(s.portalCode);
+  }
+  html += `</div>`;
+  return html;
+}
+function confirmEditPortal(sysId){
+  const s = findSystem(sysId);
+  s.portalCode = readGlyphEditRow('portal-'+sysId);
+  clearGlyphDraft('portal-'+sysId);
+  editing.delete('portal:'+sysId);
+  scheduleSave(); render();
+}
+
+// Traveller icon — a diamond outline with a compass-reticle center, matching
+// the reference glyph. Uses currentColor so CSS can flip it white <-> gold.
+const TRAVELLER_ICON_SVG = `<svg viewBox="0 0 120 156" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M60,6 L114,78 L60,150 L6,78 Z" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/>
+  <line x1="56" y1="14" x2="56" y2="50" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="64" y1="14" x2="64" y2="50" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="56" y1="106" x2="56" y2="142" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="64" y1="106" x2="64" y2="142" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="60" cy="78" r="34" stroke="currentColor" stroke-width="6"/>
+  <circle cx="60" cy="78" r="24" stroke="currentColor" stroke-width="5"/>
+  <circle cx="60" cy="78" r="8" stroke="currentColor" stroke-width="5"/>
+  <line x1="36" y1="78" x2="50" y2="78" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="70" y1="78" x2="84" y2="78" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="78.4" y1="59.6" x2="82.6" y2="55.4" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="41.6" y1="59.6" x2="37.4" y2="55.4" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="41.6" y1="96.4" x2="37.4" y2="100.6" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="78.4" y1="96.4" x2="82.6" y2="100.6" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+</svg>`;
+
+function seedState(){
+  // No default save, no example galaxy — starts fully empty. The person must
+  // create their own save before anything else is shown.
+  return { activeSaveId: null, saves: [] };
+}
+
+/* ---------------------------- persistence ----------------------------
+   This file is meant to be saved and opened directly in your own browser
+   (double-click the .html file), so it uses plain localStorage rather than
+   any Claude-artifact-only storage API. localStorage is built into every
+   browser and works fully offline — your data lives in this browser, tied
+   to this file, and nothing is sent anywhere. Use Export/Import JSON below
+   to back it up or move it to another browser or computer. */
+let saveTimer = null;
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(persist, 400);
+}
+function persist(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    showToast('Saved locally ✓');
+  }catch(e){
+    console.error('Storage error', e);
+    showToast('Could not save — your browser blocked local storage');
+  }
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      state = JSON.parse(raw);
+      return;
+    }
+  }catch(e){ /* corrupt data or storage unavailable */ }
+  state = seedState();
+  persist();
+}
+
+/* ------------------------------- toast --------------------------------- */
+let toastTimer=null;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+/* ------------------------------ helpers --------------------------------- */
+function getActiveSave(){ return (state.saves||[]).find(s=>s.id===state.activeSaveId) || state.saves[0]; }
+function esc(str){
+  return (str||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+// Like esc(), but when a search is active, wraps the matching substring in a
+// <mark> so the hit visually jumps out instead of making people read every
+// word of every result to find it.
+function highlight(str){
+  const escaped = esc(str);
+  const query = q();
+  if(!query) return escaped;
+  const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp('('+safeQuery+')', 'ig');
+  return escaped.replace(re, '<mark class="search-hit">$1</mark>');
+}
+function parseResources(str){
+  return str.split(',').map(s=>s.trim()).filter(Boolean);
+}
+
+/* ================================ RENDER ================================ */
+
+function render(){
+  const favCol = document.querySelector('.fav-col');
+  if(viewMode === 'shared-portals'){
+    if(favCol) favCol.style.display = 'none';
+    renderSharedPortalsPage();
+    return;
+  }
+  if(favCol) favCol.style.removeProperty('display');
+  if(!state.saves || state.saves.length===0){
+    renderOnboarding();
+    return;
+  }
+  renderSaveBar();
+  renderFavorites();
+  renderContent();
+}
+
+function renderOnboarding(){
+  document.getElementById('favPanel').innerHTML = '';
+  document.getElementById('saveBar').innerHTML = `
+    <span class="status-dot" style="background:var(--text-faint);box-shadow:none;"></span>
+    <span class="autosave-note">No save loaded yet — create one to get started.</span>`;
+  document.getElementById('content').innerHTML = `
+    <div class="empty" style="padding:60px 24px;">
+      <div style="font-family:'Inter',sans-serif;font-weight:800;font-size:19px;color:var(--text);margin-bottom:8px;">Start your voyage log</div>
+      <div style="margin-bottom:20px;">Create a save to begin charting galaxies, systems, planets and moons.</div>
+      <div class="add-inline" style="max-width:360px;margin:0 auto;text-align:left;">
+        <div class="field"><label>Save Name</label>
+          <input type="text" id="firstSaveInput" placeholder="e.g. My Voyager Save">
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary btn-sm" onclick="confirmFirstSave()">Create Save</button>
+        </div>
+      </div>
+    </div>`;
+  const input = document.getElementById('firstSaveInput');
+  if(input){
+    input.focus();
+    input.onkeydown = (e)=>{ if(e.key==='Enter') confirmFirstSave(); };
+  }
+}
+function confirmFirstSave(){
+  const input = document.getElementById('firstSaveInput');
+  const v = input.value.trim();
+  if(!v){ showToast('Give your save a name'); return; }
+  const ns = { id:uid(), name:v, galaxies:[], sharedPortals:[] };
+  state.saves = [ns];
+  state.activeSaveId = ns.id;
+  scheduleSave(); render();
+}
+
+function renderFavorites(){
+  const panel = document.getElementById('favPanel');
+  const save = getActiveSave();
+  const pinned = [];
+  for(const g of save.galaxies){
+    for(const s of g.systems){
+      if(s.favorite) pinned.push({galaxyId:g.id, galaxyName:g.name, systemId:s.id, systemName:s.name});
+    }
+  }
+  let html = `<div class="fav-title"><span class="star">★</span> Pinned Systems</div>`;
+  if(pinned.length===0){
+    html += `<div class="fav-empty">Tap the ☆ next to any system to pin it here for quick access.</div>`;
+  } else {
+    html += `<div class="fav-list">${pinned.map(f=>`
+      <button class="fav-item" onclick="jumpToSystem('${f.galaxyId}','${f.systemId}')">
+        <div class="fav-item-name">${esc(f.systemName)}</div>
+        <div class="fav-item-galaxy">${esc(f.galaxyName)}</div>
+      </button>`).join('')}</div>`;
+  }
+  panel.innerHTML = html;
+}
+function jumpToSystem(galaxyId, systemId){
+  searchQuery = '';
+  const searchInput = document.getElementById('searchInput');
+  if(searchInput) searchInput.value = '';
+  const clearBtn = document.getElementById('searchClear');
+  if(clearBtn) clearBtn.style.display = 'none';
+  openGalaxies.add(galaxyId);
+  openSystems.add(systemId);
+  render();
+  setTimeout(()=>{
+    const el = document.getElementById('system-'+systemId);
+    if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 30);
+}
+
+/* ------------------------- Shared Portal Codes -------------------------
+   Its own separate page (not shown on the main voyage log) — a per-save log
+   of glyph codes other people have shared with you: a description, which
+   galaxy/system it leads to, the 12-glyph code, a link (YouTube/Reddit/etc)
+   and what's there. */
+function openSharedPortals(){ viewMode = 'shared-portals'; render(); window.scrollTo({top:0, behavior:'smooth'}); }
+function closeSharedPortals(){ viewMode = 'log'; render(); }
+
+function renderSharedPortalsPage(){
+  document.getElementById('favPanel').innerHTML = '';
+  const save = getActiveSave();
+
+  document.getElementById('saveBar').innerHTML = `
+    <button class="btn btn-sm" onclick="closeSharedPortals()">← Back to Voyage Log</button>
+    <span class="autosave-note grow" style="justify-content:flex-end;text-align:right;">Portal codes other people have shared with you</span>
+  `;
+
+  const el = document.getElementById('content');
+  if(!save){
+    el.innerHTML = `<div class="empty" style="padding:60px 24px;">Create a save first, then come back here to log shared portal codes.</div>`;
+    return;
+  }
+
+  const list = save.sharedPortals || [];
+  const isAdding = addingChild.has('sharedportal:'+save.id);
+
+  let html = `<div class="shared-portals-title"><span class="diamond">◈</span> Shared Portal Codes
+    <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="openGlyphGuide()">◇ Why save these?</button>
+  </div>`;
+  if(list.length===0 && !isAdding){
+    html += `<div class="glyph-empty-note">No shared codes saved yet — add one when someone gives you a glyph address.</div>`;
+  } else if(list.length>0){
+    html += list.map(sp=>renderSharedPortalItem(save.id, sp)).join('');
+  }
+  html += `<div class="add-row" style="margin-top:10px;">`;
+  html += isAdding ? renderAddSharedPortalForm(save.id) : `<button class="btn btn-ghost btn-sm" onclick="addingChild.add('sharedportal:${save.id}');render()">+ Add Shared Code</button>`;
+  html += `</div>`;
+  el.innerHTML = html;
+}
+function renderSharedPortalItem(saveId, sp){
+  const isEditing = editing.has('sharedportal-edit:'+sp.id);
+  if(isEditing){
+    return `<div class="entry-card">
+      <div class="field-row">
+        <div class="field"><label>Description</label><input type="text" id="sp-by-${sp.id}" value="${esc(sp.sharedBy)}" placeholder="e.g. Given by Galactus in general chat"></div>
+        <div class="field"><label>Galaxy</label><input type="text" id="sp-galaxy-${sp.id}" value="${esc(sp.galaxy)}" placeholder="e.g. Euclid"></div>
+        <div class="field"><label>System</label><input type="text" id="sp-system-${sp.id}" value="${esc(sp.system)}" placeholder="e.g. Aetheris Reach"></div>
+      </div>
+      ${renderGlyphEditRow('sp-'+sp.id, sp.code)}
+      <div class="field-row">
+        <div class="field"><label>What's There</label>
+          <input type="text" id="sp-notes-${sp.id}" value="${esc(sp.notes)}" placeholder="e.g. Crashed freighter, black hole, S-class ship">
+        </div>
+        <div class="field"><label>Link (YouTube / Reddit / etc)</label>
+          <input type="text" id="sp-link-${sp.id}" value="${esc(sp.link)}" placeholder="e.g. https://youtu.be/...">
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-primary btn-sm" onclick="confirmEditSharedPortal('${saveId}','${sp.id}')">Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearGlyphDraft('sp-${sp.id}');editing.delete('sharedportal-edit:${sp.id}');render()">Cancel</button>
+      </div>
+    </div>`;
+  }
+  const meta = [sp.galaxy, sp.system].filter(Boolean).join(' · ');
+  return `<div class="entry-card">
+    <div class="entry-card-head">
+      <span class="entry-card-label">${sp.sharedBy?esc(sp.sharedBy):'Untitled entry'}${meta?` <span style="color:var(--text-faint);font-weight:400;">— ${esc(meta)}</span>`:''}</span>
+      <div class="row-actions">
+        <button class="btn btn-rename btn-sm" onclick="editing.add('sharedportal-edit:${sp.id}');render()">✎ Edit</button>
+        <button class="btn btn-delete btn-sm" onclick="deleteSharedPortal('${saveId}','${sp.id}')">🗑 Delete</button>
+      </div>
+    </div>
+    ${renderGlyphRow(sp.code)}
+    ${sp.notes?`<div class="tile-flora" style="color:var(--text-dim);">${esc(sp.notes)}</div>`:''}
+    ${sp.link?`<div style="margin-top:8px;"><a href="${esc(sp.link)}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan);font-size:12.5px;">🔗 ${esc(sp.link)}</a></div>`:''}
+  </div>`;
+}
+function renderAddSharedPortalForm(saveId){
+  return `<div class="add-inline">
+    <div class="field-row">
+      <div class="field"><label>Description</label><input type="text" id="newsp-by-${saveId}" placeholder="e.g. Given by Galactus in general chat"></div>
+      <div class="field"><label>Galaxy</label><input type="text" id="newsp-galaxy-${saveId}" placeholder="e.g. Euclid"></div>
+      <div class="field"><label>System</label><input type="text" id="newsp-system-${saveId}" placeholder="e.g. Aetheris Reach"></div>
+    </div>
+    ${renderGlyphEditRow('newsp-'+saveId, [])}
+    <div class="field-row">
+      <div class="field"><label>What's There</label>
+        <input type="text" id="newsp-notes-${saveId}" placeholder="e.g. Crashed freighter, black hole, S-class ship">
+      </div>
+      <div class="field"><label>Link (YouTube / Reddit / etc)</label>
+        <input type="text" id="newsp-link-${saveId}" placeholder="e.g. https://youtu.be/...">
+      </div>
+    </div>
+    <div class="row-actions">
+      <button class="btn btn-primary btn-sm" onclick="confirmAddSharedPortal('${saveId}')">Save Code</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearGlyphDraft('newsp-${saveId}');cancelAdd('sharedportal:${saveId}')">Cancel</button>
+    </div>
+  </div>`;
+}
+function confirmAddSharedPortal(saveId){
+  const code = readGlyphEditRow('newsp-'+saveId);
+  if(code.every(c=>!c)){ showToast('Enter at least one glyph'); return; }
+  const sharedBy = document.getElementById('newsp-by-'+saveId).value.trim();
+  const galaxy = document.getElementById('newsp-galaxy-'+saveId).value.trim();
+  const system = document.getElementById('newsp-system-'+saveId).value.trim();
+  const notes = document.getElementById('newsp-notes-'+saveId).value.trim();
+  const link = document.getElementById('newsp-link-'+saveId).value.trim();
+  const save = state.saves.find(s=>s.id===saveId);
+  save.sharedPortals = save.sharedPortals || [];
+  save.sharedPortals.push({ id:uid(), sharedBy, galaxy, system, code, notes, link });
+  clearGlyphDraft('newsp-'+saveId);
+  addingChild.delete('sharedportal:'+saveId);
+  scheduleSave(); render();
+}
+function confirmEditSharedPortal(saveId, spId){
+  const save = state.saves.find(s=>s.id===saveId);
+  const sp = save.sharedPortals.find(x=>x.id===spId);
+  sp.sharedBy = document.getElementById('sp-by-'+spId).value.trim();
+  sp.galaxy = document.getElementById('sp-galaxy-'+spId).value.trim();
+  sp.system = document.getElementById('sp-system-'+spId).value.trim();
+  sp.code = readGlyphEditRow('sp-'+spId);
+  sp.notes = document.getElementById('sp-notes-'+spId).value.trim();
+  sp.link = document.getElementById('sp-link-'+spId).value.trim();
+  clearGlyphDraft('sp-'+spId);
+  editing.delete('sharedportal-edit:'+spId);
+  scheduleSave(); render();
+}
+function deleteSharedPortal(saveId, spId){
+  if(!confirm('Delete this shared portal code?')) return;
+  const save = state.saves.find(s=>s.id===saveId);
+  save.sharedPortals = save.sharedPortals.filter(x=>x.id!==spId);
+  scheduleSave(); render();
+}
+
+function renderSaveBar(){
+  const bar = document.getElementById('saveBar');
+  const active = getActiveSave();
+  const isEditingSave = editing.has('save:'+active.id);
+  const isAddingSave = addingChild.has('root');
+
+  let html = `
+    <span class="status-dot"></span>
+    <label style="margin-bottom:0;">Game Save</label>
+    <select id="saveSelect">
+      ${state.saves.map(s=>`<option value="${s.id}" ${s.id===active.id?'selected':''}>${esc(s.name)}</option>`).join('')}
+    </select>
+    <div class="row-actions">
+      <button class="btn btn-rename btn-sm" id="btnEditSave" title="Rename this save">✎ Rename</button>
+      <button class="btn btn-primary btn-sm" id="btnAddSave" title="Add new save">+ New Save</button>
+      <button class="btn btn-delete btn-sm" id="btnDeleteSave" title="Delete this save">🗑 Delete</button>
+    </div>
+    <span class="autosave-note grow" style="justify-content:flex-end;text-align:right;">stored locally in this browser</span>
+  `;
+
+  if(isEditingSave){
+    html += `
+      <div class="save-edit-box">
+        <div class="field grow" style="margin-bottom:0;">
+          <label>Save Name</label>
+          <input type="text" id="saveNameInput" value="${esc(active.name)}">
+        </div>
+        <button class="btn btn-primary btn-sm" id="btnSaveSaveName">Save</button>
+        <button class="btn btn-ghost btn-sm" id="btnCancelSaveName">Cancel</button>
+      </div>`;
+  }
+
+  if(isAddingSave){
+    html += `
+      <div class="save-edit-box">
+        <div class="field grow" style="margin-bottom:0;">
+          <label>New Save Name</label>
+          <input type="text" id="newSaveInput" placeholder="e.g. Survival Run #2">
+        </div>
+        <button class="btn btn-primary btn-sm" id="btnConfirmAddSave">Add Save</button>
+        <button class="btn btn-ghost btn-sm" id="btnCancelAddSave">Cancel</button>
+      </div>`;
+  }
+
+  bar.innerHTML = html;
+
+  document.getElementById('saveSelect').onchange = e=>{
+    state.activeSaveId = e.target.value;
+    scheduleSave(); render();
+  };
+  document.getElementById('btnEditSave').onclick = ()=>{ editing.add('save:'+active.id); render(); };
+  document.getElementById('btnAddSave').onclick = ()=>{ addingChild.add('root'); render(); };
+  const delBtn = document.getElementById('btnDeleteSave');
+  if(delBtn) delBtn.onclick = ()=>{
+    const warning = state.saves.length===1
+      ? `Delete save "${active.name}"? This removes all galaxies within it, and since it's your only save, you'll start over from scratch.`
+      : `Delete save "${active.name}"? This removes all galaxies within it.`;
+    if(confirm(warning)){
+      state.saves = state.saves.filter(s=>s.id!==active.id);
+      state.activeSaveId = state.saves[0] ? state.saves[0].id : null;
+      scheduleSave(); render();
+    }
+  };
+  if(isEditingSave){
+    document.getElementById('btnSaveSaveName').onclick = ()=>{
+      const v = document.getElementById('saveNameInput').value.trim();
+      if(v) active.name = v;
+      editing.delete('save:'+active.id);
+      scheduleSave(); render();
+    };
+    document.getElementById('btnCancelSaveName').onclick = ()=>{ editing.delete('save:'+active.id); render(); };
+  }
+  if(isAddingSave){
+    document.getElementById('btnConfirmAddSave').onclick = ()=>{
+      const v = document.getElementById('newSaveInput').value.trim();
+      if(!v){ showToast('Name your save first'); return; }
+      const ns = { id:uid(), name:v, galaxies:[], sharedPortals:[] };
+      state.saves.push(ns);
+      state.activeSaveId = ns.id;
+      addingChild.delete('root');
+      scheduleSave(); render();
+    };
+    document.getElementById('btnCancelAddSave').onclick = ()=>{ addingChild.delete('root'); render(); };
+  }
+}
+
+/* ------------------------------ search -------------------------------- */
+function q(){ return searchQuery.trim().toLowerCase(); }
+function textHas(str){ return (str||'').toLowerCase().includes(q()); }
+function moonMatches(m){
+  return textHas(m.name) || textHas(m.kind) || textHas(m.flora)
+    || (m.resources||[]).some(r=>textHas(r)) || (m.artifacts||[]).some(r=>textHas(r));
+}
+function planetMatches(p){
+  return textHas(p.name) || textHas(p.kind) || textHas(p.flora)
+    || (p.resources||[]).some(r=>textHas(r)) || (p.artifacts||[]).some(r=>textHas(r))
+    || p.moons.some(moonMatches);
+}
+function galaxyNameMatches(g){ return textHas(g.name); }
+function systemMatches(s){
+  return textHas(s.name) || textHas(s.node.notes) || s.planets.some(planetMatches);
+}
+function systemVisible(g, s){
+  if(!q()) return true;
+  return galaxyNameMatches(g) || systemMatches(s);
+}
+function galaxyVisible(g){
+  if(!q()) return true;
+  return galaxyNameMatches(g) || g.systems.some(s=>systemVisible(g,s));
+}
+function isGalaxyOpen(id){ return q() ? true : openGalaxies.has(id); }
+function isSystemOpen(id){ return q() ? true : openSystems.has(id); }
+
+function renderContent(){
+  const el = document.getElementById('content');
+  const save = getActiveSave();
+  if(!save) return; // nothing to search/show yet — onboarding screen owns #content right now
+  const searching = !!q();
+
+  const visibleGalaxies = save.galaxies.filter(galaxyVisible);
+
+  let html = `<div class="section-label">${searching ? `Matches for "${esc(searchQuery.trim())}"` : `Galaxies in ${esc(save.name)}`}</div>`;
+
+  if(save.galaxies.length===0){
+    if(addingChild.has('galaxy:'+save.id)){
+      html += renderAddGalaxyForm(save.id);
+    } else {
+      html += `<div class="empty">No galaxies charted yet.<br><br>
+        <button class="btn btn-primary btn-sm" onclick="startAddGalaxy()">+ Chart a Galaxy</button></div>`;
+    }
+  } else if(searching && visibleGalaxies.length===0){
+    html += `<div class="empty">No galaxies, systems, planets, or moons match that search.</div>`;
+  } else {
+    html += visibleGalaxies.map(g=>renderGalaxy(g)).join('');
+    if(!searching){
+      html += `<div class="add-row">`;
+      if(addingChild.has('galaxy:'+save.id)){
+        html += renderAddGalaxyForm(save.id);
+      } else {
+        html += `<button class="btn btn-primary btn-sm" onclick="startAddGalaxy()">+ Add Galaxy</button>`;
+      }
+      html += `</div>`;
+    }
+  }
+
+  el.innerHTML = html;
+}
+
+function renderAddGalaxyForm(saveId){
+  return `
+    <div class="add-inline">
+      <div class="field"><label>Galaxy Name</label>
+        <input type="text" id="newGalaxyName" placeholder="e.g. Hilbert Dimension">
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-primary btn-sm" onclick="confirmAddGalaxy('${saveId}')">Add Galaxy</button>
+        <button class="btn btn-ghost btn-sm" onclick="cancelAdd('galaxy:${saveId}')">Cancel</button>
+      </div>
+    </div>`;
+}
+function startAddGalaxy(){ addingChild.add('galaxy:'+getActiveSave().id); render(); }
+function confirmAddGalaxy(saveId){
+  const v = document.getElementById('newGalaxyName').value.trim();
+  if(!v){ showToast('Give the galaxy a name'); return; }
+  const save = state.saves.find(s=>s.id===saveId);
+  const g = { id:uid(), name:v, systems:[] };
+  save.galaxies.push(g);
+  addingChild.delete('galaxy:'+saveId);
+  openGalaxies.add(g.id);
+  scheduleSave(); render();
+}
+function cancelAdd(key){ addingChild.delete(key); render(); }
+
+function renderGalaxy(g){
+  const isOpen = isGalaxyOpen(g.id);
+  const isEditing = editing.has('galaxy:'+g.id);
+  const planetCount = g.systems.reduce((a,s)=>a+s.planets.length,0);
+  const moonCount = g.systems.reduce((a,s)=>a+s.planets.reduce((b,p)=>b+p.moons.length,0),0);
+
+  let head = `
+    <div class="galaxy-head" onclick="toggleGalaxy('${g.id}')">
+      <div class="galaxy-title-block">
+        <div class="galaxy-name">${highlight(g.name)}</div>
+        <div class="galaxy-meta">${g.systems.length} system${g.systems.length!==1?'s':''} · ${planetCount} planet${planetCount!==1?'s':''} · ${moonCount} moon${moonCount!==1?'s':''}</div>
+      </div>
+      <div class="row-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-rename btn-sm" onclick="editing.has('galaxy:${g.id}')?0:startEditGalaxy('${g.id}')">✎ Rename</button>
+        <button class="btn btn-delete btn-sm" onclick="deleteGalaxy('${g.id}')">🗑 Delete</button>
+        <span class="chev ${isOpen?'open':''}" onclick="toggleGalaxy('${g.id}')">▶</span>
+      </div>
+    </div>`;
+
+  let body = '';
+  if(isOpen){
+    body += `<div class="galaxy-body">`;
+    if(isEditing){
+      body += `
+        <div class="add-inline" style="margin-bottom:14px;">
+          <div class="field"><label>Galaxy Name</label>
+            <input type="text" id="editGalaxyName-${g.id}" value="${esc(g.name)}">
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-primary btn-sm" onclick="confirmEditGalaxy('${g.id}')">Save</button>
+            <button class="btn btn-ghost btn-sm" onclick="editing.delete('galaxy:${g.id}');render()">Cancel</button>
+          </div>
+        </div>`;
+    }
+
+    const sorted = [...g.systems]
+      .filter(s=>systemVisible(g,s))
+      .sort((a,b)=> (b.favorite?1:0) - (a.favorite?1:0));
+    if(sorted.length===0){
+      body += `<div class="empty" style="padding:24px;">${q() ? 'No systems here match that search.' : 'No systems logged in this galaxy yet.'}</div>`;
+    } else {
+      body += sorted.map(s=>renderSystem(g, s)).join('');
+    }
+
+    if(!q()){
+      body += `<div class="add-row">`;
+      if(addingChild.has('system:'+g.id)){
+        body += renderAddSystemForm(g.id);
+      } else {
+        body += `<button class="btn btn-primary btn-sm" onclick="addingChild.add('system:${g.id}');render()">+ Add System</button>`;
+      }
+      body += `</div>`;
+    }
+    body += `</div>`;
+  }
+
+  return `<div class="galaxy">${head}${body}</div>`;
+}
+function toggleGalaxy(id){
+  if(openGalaxies.has(id)) openGalaxies.delete(id); else openGalaxies.add(id);
+  render();
+}
+function startEditGalaxy(id){ editing.add('galaxy:'+id); render(); }
+function confirmEditGalaxy(id){
+  const v = document.getElementById('editGalaxyName-'+id).value.trim();
+  if(!v){ showToast('Galaxy needs a name'); return; }
+  const g = findGalaxy(id); g.name=v;
+  editing.delete('galaxy:'+id);
+  scheduleSave(); render();
+}
+function deleteGalaxy(id){
+  if(!confirm('Delete this galaxy and everything charted inside it?')) return;
+  const save = getActiveSave();
+  save.galaxies = save.galaxies.filter(g=>g.id!==id);
+  scheduleSave(); render();
+}
+function findGalaxy(id){
+  for(const save of state.saves) for(const g of save.galaxies) if(g.id===id) return g;
+}
+function findSystem(id){
+  for(const save of state.saves) for(const g of save.galaxies) for(const s of g.systems) if(s.id===id) return s;
+}
+function findPlanet(id){
+  for(const save of state.saves) for(const g of save.galaxies) for(const s of g.systems) for(const p of s.planets) if(p.id===id) return p;
+}
+function findMoonHost(moonId){
+  for(const save of state.saves) for(const g of save.galaxies) for(const s of g.systems) for(const p of s.planets)
+    for(const m of p.moons) if(m.id===moonId) return {planet:p, moon:m};
+}
+
+function renderAddSystemForm(galaxyId){
+  const save = getActiveSave();
+  return `
+    <div class="add-inline">
+      <div class="field-row">
+        <div class="field"><label>Galaxy</label>
+          <select id="newSystemGalaxy-${galaxyId}">
+            ${save.galaxies.map(g=>`<option value="${g.id}" ${g.id===galaxyId?'selected':''}>${esc(g.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>System Name</label>
+          <input type="text" id="newSystemName-${galaxyId}" placeholder="e.g. Aetheris Reach">
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-primary btn-sm" onclick="confirmAddSystem('${galaxyId}')">Add System</button>
+        <button class="btn btn-ghost btn-sm" onclick="cancelAdd('system:${galaxyId}')">Cancel</button>
+      </div>
+    </div>`;
+}
+function confirmAddSystem(formId){
+  const input = document.getElementById('newSystemName-'+formId);
+  const v = input.value.trim();
+  if(!v){ showToast('Give the system a name'); return; }
+  const targetGalaxyId = document.getElementById('newSystemGalaxy-'+formId).value;
+  const g = findGalaxy(targetGalaxyId);
+  const s = { id:uid(), name:v, favorite:false, traveller:false, node:{notes:''}, portalCode:Array(12).fill(''), planets:[] };
+  g.systems.push(s);
+  addingChild.delete('system:'+formId);
+  openGalaxies.add(targetGalaxyId);
+  openSystems.add(s.id);
+  scheduleSave(); render();
+}
+
+function renderSystem(g, s){
+  const isOpen = isSystemOpen(s.id);
+  const isEditing = editing.has('system:'+s.id);
+
+  let head = `
+    <div class="system-head" onclick="toggleSystem('${s.id}')">
+      <div class="system-title-block">
+        <button class="star-btn ${s.favorite?'active':''}" title="Pin to top of galaxy" onclick="event.stopPropagation();toggleFavorite('${s.id}')">${s.favorite?'★':'☆'}</button>
+        <button class="traveller-btn ${s.traveller?'active':''}" title="${s.traveller?'Traveller present — click to clear':'Mark this system as having a Traveller'}" onclick="event.stopPropagation();toggleTraveller('${s.id}')">${TRAVELLER_ICON_SVG}</button>
+        <span class="system-name">${highlight(s.name)}</span>
+        ${s.favorite?'<span class="pin-tag">PINNED</span>':''}
+        <span class="galaxy-meta">${s.planets.length} planet${s.planets.length!==1?'s':''}, ${s.planets.reduce((a,p)=>a+p.moons.length,0)} moon${s.planets.reduce((a,p)=>a+p.moons.length,0)!==1?'s':''}</span>
+      </div>
+      <div class="row-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-rename btn-sm" onclick="editing.add('system:${s.id}');render()">✎ Rename</button>
+        <button class="btn btn-delete btn-sm" onclick="deleteSystem('${g.id}','${s.id}')">🗑 Delete</button>
+        <span class="chev ${isOpen?'open':''}" onclick="toggleSystem('${s.id}')">▶</span>
+      </div>
+    </div>`;
+
+  let body = '';
+  if(isOpen){
+    body += `<div class="system-body">`;
+
+    if(isEditing){
+      body += `
+        <div class="add-inline" style="margin-bottom:12px;">
+          <div class="field"><label>System Name</label>
+            <input type="text" id="editSystemName-${s.id}" value="${esc(s.name)}">
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-primary btn-sm" onclick="confirmEditSystem('${s.id}')">Save</button>
+            <button class="btn btn-ghost btn-sm" onclick="editing.delete('system:${s.id}');render()">Cancel</button>
+          </div>
+        </div>`;
+    }
+
+    // Node section — always shown before planets
+    const isEditingNode = editing.has('node:'+s.id);
+    body += `<div class="node-box">
+      <div class="node-label"><span>◆ System Note</span>
+        ${isEditingNode?'':`<button class="btn btn-rename btn-sm" onclick="editing.add('node:${s.id}');render()">✎ Edit</button>`}
+      </div>`;
+    if(isEditingNode){
+      body += `
+        <textarea id="nodeNotes-${s.id}" placeholder="Base coordinates, portal glyphs, trade notes, anything worth remembering about this system...">${esc(s.node.notes)}</textarea>
+        <div class="row-actions" style="margin-top:8px;">
+          <button class="btn btn-primary btn-sm" onclick="confirmEditNode('${s.id}')">Save Note</button>
+          <button class="btn btn-ghost btn-sm" onclick="editing.delete('node:${s.id}');render()">Cancel</button>
+        </div>`;
+    } else {
+      body += `<div class="node-text">${highlight(s.node.notes)}</div>`;
+    }
+    body += `</div>`;
+
+    // Portal glyph address (this system's own code)
+    body += renderPortalBox(s);
+
+    // Planets
+    body += `<div class="section-label">Planets &amp; Moons</div>`;
+    if(s.planets.length===0){
+      body += `<div class="empty" style="padding:20px;">No planets surveyed in this system.</div>`;
+    } else {
+      body += `<div class="tiles">${s.planets.map(p=>renderPlanet(s,p)).join('')}</div>`;
+    }
+
+    if(!q()){
+      body += `<div class="add-row">`;
+      if(addingChild.has('planet:'+s.id)){
+        body += renderAddPlanetForm(s.id);
+      } else {
+        body += `<button class="btn btn-planet btn-sm" onclick="addingChild.add('planet:${s.id}');render()">+ Add Planet</button>`;
+      }
+      body += `</div>`;
+    }
+
+    body += `</div>`;
+  }
+
+  return `<div class="system ${s.favorite?'pinned':''}" id="system-${s.id}">${head}${body}</div>`;
+}
+function toggleSystem(id){
+  if(openSystems.has(id)) openSystems.delete(id); else openSystems.add(id);
+  render();
+}
+function toggleFavorite(id){
+  const s = findSystem(id); s.favorite = !s.favorite;
+  scheduleSave(); render();
+}
+function toggleTraveller(id){
+  const s = findSystem(id); s.traveller = !s.traveller;
+  scheduleSave(); render();
+}
+function confirmEditSystem(id){
+  const v = document.getElementById('editSystemName-'+id).value.trim();
+  if(!v){ showToast('System needs a name'); return; }
+  findSystem(id).name = v;
+  editing.delete('system:'+id);
+  scheduleSave(); render();
+}
+function confirmEditNode(id){
+  const v = document.getElementById('nodeNotes-'+id).value;
+  findSystem(id).node.notes = v;
+  editing.delete('node:'+id);
+  scheduleSave(); render();
+}
+function deleteSystem(galaxyId, systemId){
+  if(!confirm('Delete this system and all planets/moons inside it?')) return;
+  const g = findGalaxy(galaxyId);
+  g.systems = g.systems.filter(s=>s.id!==systemId);
+  scheduleSave(); render();
+}
+
+function renderAddSystemFormWrapper(){} // placeholder not used
+
+function kindDatalist(id, kinds){
+  return `<datalist id="${id}">${kinds.map(k=>`<option value="${k}">`).join('')}</datalist>`;
+}
+
+function renderAddPlanetForm(systemId){
+  return `
+    <div class="add-inline">
+      <div class="field-row">
+        <div class="field"><label>Planet Name</label>
+          <input type="text" id="np-name-${systemId}" placeholder="e.g. Axiom Forge">
+        </div>
+        <div class="field"><label>Kind</label>
+          <input type="text" id="np-kind-${systemId}" list="planetKinds" placeholder="e.g. Mechanical Planet">
+          ${kindDatalist('planetKinds', PLANET_KINDS)}
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Flora (optional)</label>
+          <input type="text" id="np-flora-${systemId}" placeholder="e.g. Frost Creystal">
+        </div>
+        <div class="field"><label>Artifacts (comma separated)</label>
+          <input type="text" id="np-artifacts-${systemId}" placeholder="e.g. Ancient Bones, Salvageable Scrap">
+        </div>
+      </div>
+      <div class="field"><label>Resources (comma separated)</label>
+        <input type="text" id="np-res-${systemId}" placeholder="e.g. Copper, Gold, Cobalt">
+      </div>
+      <div class="field"><label>Sentinel Activity</label>
+        <select id="np-sentinel-${systemId}">${sentinelOptions('')}</select>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-primary btn-sm" onclick="confirmAddPlanet('${systemId}')">Add Planet</button>
+        <button class="btn btn-ghost btn-sm" onclick="cancelAdd('planet:${systemId}')">Cancel</button>
+      </div>
+    </div>`;
+}
+function confirmAddPlanet(systemId){
+  const name = document.getElementById('np-name-'+systemId).value.trim();
+  if(!name){ showToast('Give the planet a name'); return; }
+  const kind = document.getElementById('np-kind-'+systemId).value.trim();
+  const flora = document.getElementById('np-flora-'+systemId).value.trim();
+  const artifacts = parseResources(document.getElementById('np-artifacts-'+systemId).value);
+  const resources = parseResources(document.getElementById('np-res-'+systemId).value);
+  const sentinel = document.getElementById('np-sentinel-'+systemId).value;
+  const s = findSystem(systemId);
+  s.planets.push({ id:uid(), name, kind, flora, artifacts, resources, sentinel, moons:[] });
+  addingChild.delete('planet:'+systemId);
+  scheduleSave(); render();
+}
+
+function renderPlanet(system, p){
+  const isEditing = editing.has('planet:'+p.id);
+  const color = planetColor();
+
+  let html = `<div class="tile" style="--kc:${color}">`;
+
+  if(isEditing){
+    html += `
+      <div class="field-row">
+        <div class="field"><label>Planet Name</label><input type="text" id="ep-name-${p.id}" value="${esc(p.name)}"></div>
+        <div class="field"><label>Kind</label><input type="text" id="ep-kind-${p.id}" list="planetKindsEdit" value="${esc(p.kind)}">${kindDatalist('planetKindsEdit', PLANET_KINDS)}</div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Flora (optional)</label><input type="text" id="ep-flora-${p.id}" value="${esc(p.flora)}"></div>
+        <div class="field"><label>Artifacts (comma separated)</label><input type="text" id="ep-artifacts-${p.id}" value="${esc((p.artifacts||[]).join(', '))}"></div>
+      </div>
+      <div class="field"><label>Resources (comma separated)</label><input type="text" id="ep-res-${p.id}" value="${esc(p.resources.join(', '))}"></div>
+      <div class="field"><label>Sentinel Activity</label>
+        <select id="ep-sentinel-${p.id}">${sentinelOptions(p.sentinel)}</select>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-primary btn-sm" onclick="confirmEditPlanet('${p.id}')">Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="editing.delete('planet:${p.id}');render()">Cancel</button>
+      </div>`;
+  } else {
+    html += `
+      <div class="tile-head">
+        <div class="tile-title-block">
+          <span class="hex">P</span>
+          <span class="tile-name">${highlight(p.name)}</span>
+          ${p.kind?`<span class="tile-kind">${highlight(p.kind)}</span>`:''}
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-rename btn-sm" onclick="editing.add('planet:${p.id}');render()">✎ Rename</button>
+          <button class="btn btn-delete btn-sm" onclick="deletePlanet('${system.id}','${p.id}')">🗑 Delete</button>
+        </div>
+      </div>
+      ${p.flora?`<div class="tile-flora">🌱 ${highlight(p.flora)}</div>`:''}
+      ${renderLabeledChips('Artifacts', p.artifacts)}
+      ${renderLabeledChips('Resources', p.resources)}
+      ${renderSentinelBadge(p.sentinel)}
+    `;
+  }
+
+  // moons
+  html += `<div class="moons">`;
+  html += p.moons.map(m=>renderMoon(p, m)).join('');
+  html += `<div class="add-row">`;
+  if(addingChild.has('moon:'+p.id)){
+    html += renderAddMoonForm(p.id);
+  } else {
+    html += `<button class="btn btn-moon btn-sm" onclick="addingChild.add('moon:${p.id}');render()">+ Add Moon</button>`;
+  }
+  html += `</div></div>`;
+
+  html += `</div>`;
+  return html;
+}
+function confirmEditPlanet(id){
+  const name = document.getElementById('ep-name-'+id).value.trim();
+  if(!name){ showToast('Planet needs a name'); return; }
+  const p = findPlanet(id);
+  p.name = name;
+  p.kind = document.getElementById('ep-kind-'+id).value.trim();
+  p.flora = document.getElementById('ep-flora-'+id).value.trim();
+  p.artifacts = parseResources(document.getElementById('ep-artifacts-'+id).value);
+  p.resources = parseResources(document.getElementById('ep-res-'+id).value);
+  p.sentinel = document.getElementById('ep-sentinel-'+id).value;
+  editing.delete('planet:'+id);
+  scheduleSave(); render();
+}
+function deletePlanet(systemId, planetId){
+  if(!confirm('Delete this planet and any moons attached to it?')) return;
+  const s = findSystem(systemId);
+  s.planets = s.planets.filter(p=>p.id!==planetId);
+  scheduleSave(); render();
+}
+
+function renderAddMoonForm(planetId){
+  return `
+    <div class="add-inline">
+      <div class="field-row">
+        <div class="field"><label>Moon Name</label><input type="text" id="nm-name-${planetId}" placeholder="e.g. Arctica Moon I"></div>
+        <div class="field"><label>Kind</label><input type="text" id="nm-kind-${planetId}" list="moonKinds" placeholder="e.g. Columned">${kindDatalist('moonKinds', MOON_KINDS)}</div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Flora (optional)</label><input type="text" id="nm-flora-${planetId}" placeholder="e.g. Cactus Flesh"></div>
+        <div class="field"><label>Artifacts (comma separated)</label><input type="text" id="nm-artifacts-${planetId}" placeholder="e.g. Ancient Bones, Salvageable Scrap"></div>
+      </div>
+      <div class="field"><label>Resources (comma separated)</label><input type="text" id="nm-res-${planetId}" placeholder="e.g. Activated Copper, Pyrite, Cobalt"></div>
+      <div class="field"><label>Sentinel Activity</label>
+        <select id="nm-sentinel-${planetId}">${sentinelOptions('')}</select>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-primary btn-sm" onclick="confirmAddMoon('${planetId}')">Add Moon</button>
+        <button class="btn btn-ghost btn-sm" onclick="cancelAdd('moon:${planetId}')">Cancel</button>
+      </div>
+    </div>`;
+}
+function confirmAddMoon(planetId){
+  const name = document.getElementById('nm-name-'+planetId).value.trim();
+  if(!name){ showToast('Give the moon a name'); return; }
+  const kind = document.getElementById('nm-kind-'+planetId).value.trim();
+  const flora = document.getElementById('nm-flora-'+planetId).value.trim();
+  const artifacts = parseResources(document.getElementById('nm-artifacts-'+planetId).value);
+  const resources = parseResources(document.getElementById('nm-res-'+planetId).value);
+  const sentinel = document.getElementById('nm-sentinel-'+planetId).value;
+  const p = findPlanet(planetId);
+  p.moons.push({ id:uid(), name, kind, flora, artifacts, resources, sentinel });
+  addingChild.delete('moon:'+planetId);
+  scheduleSave(); render();
+}
+
+function renderMoon(planet, m){
+  const isEditing = editing.has('moon:'+m.id);
+  const color = moonColor();
+  let html = `<div class="tile moon-tile" style="--kc:${color}">`;
+
+  if(isEditing){
+    html += `
+      <div class="field-row">
+        <div class="field"><label>Moon Name</label><input type="text" id="em-name-${m.id}" value="${esc(m.name)}"></div>
+        <div class="field"><label>Kind</label><input type="text" id="em-kind-${m.id}" list="moonKindsEdit" value="${esc(m.kind)}">${kindDatalist('moonKindsEdit', MOON_KINDS)}</div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Flora (optional)</label><input type="text" id="em-flora-${m.id}" value="${esc(m.flora)}"></div>
+        <div class="field"><label>Artifacts (comma separated)</label><input type="text" id="em-artifacts-${m.id}" value="${esc((m.artifacts||[]).join(', '))}"></div>
+      </div>
+      <div class="field"><label>Resources (comma separated)</label><input type="text" id="em-res-${m.id}" value="${esc(m.resources.join(', '))}"></div>
+      <div class="field"><label>Sentinel Activity</label>
+        <select id="em-sentinel-${m.id}">${sentinelOptions(m.sentinel)}</select>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-primary btn-sm" onclick="confirmEditMoon('${m.id}')">Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="editing.delete('moon:${m.id}');render()">Cancel</button>
+      </div>`;
+  } else {
+    html += `
+      <div class="tile-head">
+        <div class="tile-title-block">
+          <span class="hex">M</span>
+          <span class="tile-name">${highlight(m.name)}</span>
+          ${m.kind?`<span class="tile-kind">${highlight(m.kind)}</span>`:''}
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-rename btn-sm" onclick="editing.add('moon:${m.id}');render()">✎ Rename</button>
+          <button class="btn btn-delete btn-sm" onclick="deleteMoon('${planet.id}','${m.id}')">🗑 Delete</button>
+        </div>
+      </div>
+      ${m.flora?`<div class="tile-flora">🌱 ${highlight(m.flora)}</div>`:''}
+      ${renderLabeledChips('Artifacts', m.artifacts)}
+      ${renderLabeledChips('Resources', m.resources)}
+      ${renderSentinelBadge(m.sentinel)}
+    `;
+  }
+  html += `</div>`;
+  return html;
+}
+function confirmEditMoon(id){
+  const name = document.getElementById('em-name-'+id).value.trim();
+  if(!name){ showToast('Moon needs a name'); return; }
+  const found = findMoonHost(id);
+  found.moon.name = name;
+  found.moon.kind = document.getElementById('em-kind-'+id).value.trim();
+  found.moon.flora = document.getElementById('em-flora-'+id).value.trim();
+  found.moon.artifacts = parseResources(document.getElementById('em-artifacts-'+id).value);
+  found.moon.resources = parseResources(document.getElementById('em-res-'+id).value);
+  found.moon.sentinel = document.getElementById('em-sentinel-'+id).value;
+  editing.delete('moon:'+id);
+  scheduleSave(); render();
+}
+function deleteMoon(planetId, moonId){
+  if(!confirm('Delete this moon?')) return;
+  const p = findPlanet(planetId);
+  p.moons = p.moons.filter(m=>m.id!==moonId);
+  scheduleSave(); render();
+}
+
+/* --------------------------- export / import ---------------------------- */
+document.getElementById('btnExport').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `nms-voyage-log-${date}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Export downloaded');
+};
+document.getElementById('btnImportTrigger').onclick = ()=>{
+  document.getElementById('fileImport').click();
+};
+document.getElementById('fileImport').onchange = (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed.saves || !Array.isArray(parsed.saves)) throw new Error('bad shape');
+      if(confirm('Import this file? It will replace everything currently in your voyage log.')){
+        state = parsed;
+        if(!state.activeSaveId || !state.saves.find(s=>s.id===state.activeSaveId)){
+          state.activeSaveId = state.saves[0] ? state.saves[0].id : null;
+        }
+        scheduleSave(); render();
+        showToast('Import complete');
+      }
+    }catch(err){
+      showToast('That file does not look like a valid voyage log export');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+};
+
+/* ------------------------------ nav wiring -------------------------------- */
+document.getElementById('searchInput').oninput = (e)=>{
+  searchQuery = e.target.value;
+  document.getElementById('searchClear').style.display = searchQuery ? 'block' : 'none';
+  renderContent();
+};
+document.getElementById('searchClear').onclick = ()=>{
+  searchQuery = '';
+  const input = document.getElementById('searchInput');
+  input.value = '';
+  document.getElementById('searchClear').style.display = 'none';
+  renderContent();
+  input.focus();
+};
+document.getElementById('btnHome').onclick = ()=>{
+  closeModal();
+  viewMode = 'log';
+  searchQuery = '';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').style.display = 'none';
+  openGalaxies.clear();
+  openSystems.clear();
+  editing.clear();
+  addingChild.clear();
+  const save = getActiveSave();
+  if(save && save.galaxies[0]){
+    openGalaxies.add(save.galaxies[0].id);
+    if(save.galaxies[0].systems[0]) openSystems.add(save.galaxies[0].systems[0].id);
+  }
+  render();
+  window.scrollTo({top:0, behavior:'smooth'});
+};
+
+document.getElementById('btnSharedPortals').onclick = openSharedPortals;
+document.getElementById('btnBackToTop').onclick = ()=>{
+  window.scrollTo({top:0, behavior:'smooth'});
+};
+
+/* ------------------------------- theme toggle ------------------------------- */
+function applyThemeButtonLabel(){
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  document.getElementById('btnThemeToggle').textContent = isLight ? '☀ Light' : '🌙 Dark';
+}
+document.getElementById('btnThemeToggle').onclick = ()=>{
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  if(isLight){
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme','light');
+  }
+  try{ localStorage.setItem('nms-buddy-theme', isLight ? 'dark' : 'light'); }catch(e){}
+  applyThemeButtonLabel();
+};
+applyThemeButtonLabel();
+
+/* -------------------------------- modals ---------------------------------- */
+function openModal(title, bodyHtml){
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal-box">
+        <div class="modal-title"><span>${title}</span>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">${bodyHtml}</div>
+      </div>
+    </div>`;
+}
+function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
+
+function openGlyphGuide(){
+  openModal('Why Save Portal Codes?', `
+    <p style="margin-top:0;">A portal glyph address is like a set of coordinates — it lets you jump straight to a specific system without exploring your way there. Saving one here means you don't have to dig back through Discord, Reddit or a video to find it again.</p>
+    <ul>
+      <li><strong>Skip the grind</strong> — jump directly to a rare biome, a black hole shortcut, or a system near the galactic center.</li>
+      <li><strong>Find something specific</strong> — a crashed freighter, a distress signal, an S-class ship, a great base spot.</li>
+      <li><strong>Credit the source</strong> — the Description and Link fields let you note who shared it and link back to the original video or post.</li>
+      <li><strong>Keep it to yourself or share it on</strong> — export your save as JSON any time to back these up or pass them along.</li>
+    </ul>
+  `);
+}
+
+document.getElementById('btnGuide').onclick = ()=>{
+  openModal('Guide', `
+    <ul>
+      <li><strong>Saves</strong> — pick or add a game save from the bar below the header. Each save keeps its own galaxies.</li>
+      <li><strong>Galaxies → Systems → Planets → Moons</strong> — expand a galaxy, then a system, to see its planets and their moons nested underneath.</li>
+      <li><strong>System Note</strong> — the box at the top of every system, before the planet list, for base coordinates, portal glyphs, or trade notes.</li>
+      <li><strong>Favourites</strong> — tap the ☆ next to a system name to pin it to the top of its galaxy.</li>
+      <li><strong>Search</strong> — the bar up top filters across every galaxy, system, planet, moon, kind and resource as you type.</li>
+      <li><strong>Export / Import</strong> — download your log as a JSON file to back it up or share it with friends; they can import it into their own copy of this page.</li>
+    </ul>
+    <p class="modal-credit">
+      <a class="btn-youtube" href="https://youtu.be/9Oo6JrlZku4" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="5" width="22" height="14" rx="4" fill="#FF0000"/><path d="M10 9l6 3-6 3V9z" fill="#ffffff"/></svg>
+        Video Tutorial
+      </a>
+    </p>
+  `);
+};
+document.getElementById('btnAbout').onclick = ()=>{
+  openModal('About', `
+    <p>NMS.Buddy is a simple save tracker for <strong>No Man's Sky</strong> explorers — a place to log the galaxies, systems, planets and moons you've discovered, along with their resources and any notes worth remembering.</p>
+    <p>Everything you enter is saved locally in this browser as you go. Nothing is sent anywhere else, and the only way to share a log with a friend is to export it and hand them the file.</p>
+    <p class="modal-credit">Created and designed by <a href="https://www.youtube.com/@SirBeetWix" target="_blank" rel="noopener noreferrer">©SirBeetWix</a>. Made with the use of AI tools.</p>
+  `);
+};
+
+
+/* --------------------------------- boot ---------------------------------- */
+(function init(){
+  try{
+    loadState();
+    // open the first galaxy / first pinned or first system by default for orientation
+    const save = getActiveSave();
+    if(save && save.galaxies[0]){
+      openGalaxies.add(save.galaxies[0].id);
+      if(save.galaxies[0].systems[0]) openSystems.add(save.galaxies[0].systems[0].id);
+    }
+    render();
+  }catch(e){
+    console.error('Boot error', e);
+    document.getElementById('content').innerHTML = `
+      <div class="empty" style="border-color:var(--red);color:var(--red);">
+        Something went wrong loading the voyage log.<br>
+        <span style="color:var(--text-faint);font-size:12px;">${esc(e.message||String(e))}</span><br><br>
+        <button class="btn btn-primary btn-sm" onclick="location.reload()">Reload</button>
+      </div>`;
+  }
+})();
+
+</script>
+</body>
+</html>
